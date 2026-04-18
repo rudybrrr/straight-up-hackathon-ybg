@@ -1,4 +1,4 @@
-export type SourcePlatform = "WhatsApp" | "Telegram" | "Discord" | "Email" | "Other";
+export type SourcePlatform = "WhatsApp" | "Telegram" | "Discord" | "Slack" | "Email" | "Other";
 
 export type Priority = "act_now" | "review_soon" | "for_later";
 

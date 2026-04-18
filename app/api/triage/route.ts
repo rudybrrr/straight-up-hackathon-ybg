@@ -42,7 +42,7 @@ export async function POST(request: Request) {
             prompt: buildTriagePrompt(item),
             output: Output.object({
               name: "OrgisTriage",
-              description: "A concise summary, priority, and reason for a personal inbox item.",
+              description: "A concise summary, priority, and reason for a compiled chat item.",
               schema: triageResponseSchema
             }),
             temperature: 0,

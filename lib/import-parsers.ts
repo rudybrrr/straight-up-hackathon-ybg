@@ -4,6 +4,7 @@ const platformLookup: Record<string, SourcePlatform> = {
   whatsapp: "WhatsApp",
   telegram: "Telegram",
   discord: "Discord",
+  slack: "Slack",
   email: "Email"
 };
 
@@ -197,7 +198,7 @@ function parseMetadataBlock(block: string) {
       continue;
     }
 
-    const metadataMatch = trimmed.match(/^(source|platform|sender|from|chat|thread|subject|timestamp|date|messages|message count|count|is thread|isthread)\s*:\s*(.*)$/i);
+    const metadataMatch = trimmed.match(/^(source|platform|app|sender|from|chat|thread|channel|room|subject|timestamp|date|messages|message count|count|is thread|isthread)\s*:\s*(.*)$/i);
     if (metadataMatch) {
       metadata[metadataMatch[1].toLowerCase()] = metadataMatch[2];
       continue;
@@ -218,7 +219,7 @@ function parseMetadataBlock(block: string) {
 }
 
 function toDraftInboxItem(input: Record<string, unknown>, fallbackContent: string): DraftInboxItem {
-  let source = normalizeSource(getField(input, "source", "platform"));
+  let source = normalizeSource(getField(input, "source", "platform", "app"));
   const hasEmailCues = Boolean(getField(input, "from", "subject", "body"));
   if (source === "Other" && hasEmailCues) {
     source = "Email";
@@ -230,6 +231,8 @@ function toDraftInboxItem(input: Record<string, unknown>, fallbackContent: strin
       "chatOrThreadName",
       "chat",
       "thread",
+      "channel",
+      "room",
       "subject",
       "chatorthreadname"
     ),
@@ -300,9 +303,9 @@ export function parseImportedContent(content: string, fileName?: string): DraftI
 
   return parseTextBlocks(trimmed).map((block) => {
     const { metadata, body } = parseMetadataBlock(block);
-    const source = metadata.source ?? metadata.platform;
+    const source = metadata.source ?? metadata.platform ?? metadata.app;
     const sender = metadata.sender ?? metadata.from;
-    const chat = metadata.chat ?? metadata.thread ?? metadata.subject;
+    const chat = metadata.chat ?? metadata.thread ?? metadata.channel ?? metadata.room ?? metadata.subject;
 
     return toDraftInboxItem(
       {

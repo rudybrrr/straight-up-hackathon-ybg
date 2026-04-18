@@ -1,6 +1,6 @@
 import type { SourcePlatform } from "@/types/orgis";
 
-export type SampleImportKey = "whatsapp" | "telegram" | "discord" | "email";
+export type SampleImportKey = "whatsapp" | "telegram" | "discord" | "slack";
 
 export interface SampleImport {
   key: SampleImportKey;
@@ -17,14 +17,14 @@ export const sampleImports: SampleImport[] = [
     label: "WhatsApp sample",
     source: "WhatsApp",
     format: "text",
-    description: "Pasted text blocks with thread metadata.",
+    description: "Quick copied threads with sender, chat, and timing details.",
     content: `Source: WhatsApp
 Sender: Priya Nair
-Chat: Launch review
+Chat: Client launch room
 Timestamp: 2026-04-18 09:12 AM
 Messages: 3
 Content:
-Can you send the latest deck before 11:30? The client moved the review earlier.
+The client moved the review earlier. Can you send the final deck before 11:30?
 
 ---
 
@@ -41,7 +41,7 @@ Dinner is at 7. Sharing the cafe address here.`
     label: "Telegram sample",
     source: "Telegram",
     format: "json",
-    description: "Structured JSON for quick import testing.",
+    description: "Structured JSON for testing multi-thread imports.",
     content: `[
   {
     "source": "Telegram",
@@ -54,12 +54,12 @@ Dinner is at 7. Sharing the cafe address here.`
   },
   {
     "source": "Telegram",
-    "sender": "Alex",
-    "chatOrThreadName": "Shared links",
+    "sender": "Community mods",
+    "chatOrThreadName": "Weekend planning",
     "timestamp": "2026-04-17T21:15:00+08:00",
-    "rawContent": "Sent the article on faster inbox triage. Worth a read when you have time.",
-    "messageCount": 1,
-    "isThread": false
+    "rawContent": "Collected sticker pack ideas and volunteer shifts for the weekend drop. Review later when free.",
+    "messageCount": 4,
+    "isThread": true
   }
 ]`
   },
@@ -68,31 +68,33 @@ Dinner is at 7. Sharing the cafe address here.`
     label: "Discord sample",
     source: "Discord",
     format: "csv",
-    description: "CSV rows with raw content and thread flags.",
+    description: "CSV rows from channel exports with thread counts.",
     content: `source,sender,chatOrThreadName,timestamp,messageCount,isThread,rawContent
 Discord,Design Crew,#launch-studio,2026-04-18T07:52:00+08:00,4,true,"Need one more pass on the homepage copy before we freeze it."
 Discord,Community Bot,#announcements,2026-04-17T19:30:00+08:00,1,false,"New patch notes are live. FYI only."`
   },
   {
-    key: "email",
-    label: "Email sample",
-    source: "Email",
+    key: "slack",
+    label: "Slack sample",
+    source: "Slack",
     format: "text",
-    description: "Classic email blocks with subject and body.",
-    content: `Source: Email
-From: Orbit Billing
-Subject: April invoice is available
-Timestamp: 2026-04-18 06:25 AM
-Body:
-Your invoice is attached for this cycle. The renewal stays unchanged unless you update the plan.
+    description: "Channel-style text blocks with app, sender, and channel metadata.",
+    content: `App: Slack
+Sender: Ari Chen
+Channel: #launch-ops
+Timestamp: 2026-04-18 10:14 AM
+Messages: 7
+Content:
+Legal approved the copy. Please pin the launch note and post it at 12:00.
 
 ---
 
-Source: Email
-From: Weekly Digest
-Subject: Inbox research roundup
-Timestamp: 2026-04-17 07:00 AM
-Body:
-A short roundup of productivity articles and release notes for the week.`
+App: Slack
+Sender: Growth Pod
+Channel: #campaign-assets
+Timestamp: 2026-04-17 06:42 PM
+Messages: 3
+Content:
+Moodboard links are here for whenever you review the next batch.`
   }
 ];

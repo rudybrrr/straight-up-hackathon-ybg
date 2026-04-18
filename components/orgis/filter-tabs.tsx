@@ -24,15 +24,15 @@ export function FilterTabs({
   ];
 
   return (
-    <div className="flex h-full flex-col justify-between gap-3 rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-3">
+    <div className="flex h-full flex-col justify-between gap-4 rounded-[1.75rem] border border-slate-200 bg-white/90 p-4 shadow-soft backdrop-blur-xl">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-900">Filters</p>
+        <p className="text-sm font-medium text-slate-900">Focus view</p>
         <p className="text-sm leading-6 text-slate-600">
-          Switch between priority buckets to triage the inbox quickly.
+          Jump between urgency lanes without losing the cross-platform sort order.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2">
         {tabs.map((tab) => {
           const active = value === tab.key;
 
@@ -42,17 +42,17 @@ export function FilterTabs({
               type="button"
               onClick={() => onChange(tab.key)}
               className={cn(
-                "flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left text-sm font-medium transition-all duration-200",
+                "flex items-center justify-between gap-3 rounded-[1.25rem] border px-3 py-3 text-left text-sm font-medium transition-all duration-200",
                 active
-                  ? "border-slate-900 bg-slate-900 text-white shadow-sm"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-100"
+                  ? "border-slate-950 bg-slate-950 text-white shadow-sm"
+                  : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
               )}
             >
               <span>{tab.label}</span>
               <span
                 className={cn(
                   "rounded-full px-2 py-0.5 text-xs font-semibold",
-                  active ? "bg-white/10 text-white" : "bg-slate-100 text-slate-600"
+                  active ? "bg-white/10 text-white" : "bg-white text-slate-600"
                 )}
               >
                 {tab.count}
