@@ -1,5 +1,5 @@
-import { InboxCard } from "@/components/polyboard/inbox-card";
-import type { InboxItem } from "@/types/polyboard";
+import { InboxCard } from "@/components/orgis/inbox-card";
+import type { InboxItem } from "@/types/orgis";
 
 export function InboxList({
   items,
@@ -23,4 +23,3 @@ export function InboxList({
     </div>
   );
 }
-

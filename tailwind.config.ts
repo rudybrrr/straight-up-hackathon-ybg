@@ -62,7 +62,7 @@ const config: Config = {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       backgroundImage: {
-        "polyboard-grid":
+        "orgis-grid":
           "linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px)"
       }
     }
@@ -71,4 +71,3 @@ const config: Config = {
 };
 
 export default config;
-

@@ -1,4 +1,4 @@
-import type { DraftInboxItem, SourcePlatform } from "@/types/polyboard";
+import type { DraftInboxItem, SourcePlatform } from "@/types/orgis";
 
 const platformLookup: Record<string, SourcePlatform> = {
   whatsapp: "WhatsApp",
@@ -12,7 +12,7 @@ function createId() {
     return crypto.randomUUID();
   }
 
-  return `pb_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  return `orgis_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
 function normalizeSource(value: unknown): SourcePlatform {
@@ -262,8 +262,8 @@ function normalizeObject(input: unknown, fallbackContent: string): DraftInboxIte
     return null;
   }
 
-    return toDraftInboxItem(input as Record<string, unknown>, fallbackContent);
-  }
+  return toDraftInboxItem(input as Record<string, unknown>, fallbackContent);
+}
 
 export function parseImportedContent(content: string, fileName?: string): DraftInboxItem[] {
   const trimmed = content.trim();

@@ -1,4 +1,4 @@
-import type { InboxItem, Priority, PriorityFilter, SourcePlatform } from "@/types/polyboard";
+import type { InboxItem, Priority, PriorityFilter, SourcePlatform } from "@/types/orgis";
 
 export const priorityOrder: Record<Priority, number> = {
   act_now: 0,

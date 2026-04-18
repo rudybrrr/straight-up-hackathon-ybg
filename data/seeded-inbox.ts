@@ -1,4 +1,4 @@
-import type { InboxItem } from "@/types/polyboard";
+import type { InboxItem } from "@/types/orgis";
 
 export const seededInbox: InboxItem[] = [
   {
@@ -80,4 +80,3 @@ export const seededInbox: InboxItem[] = [
     isThread: false
   }
 ];
-

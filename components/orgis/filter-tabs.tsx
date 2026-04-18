@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { PriorityFilter } from "@/types/polyboard";
+import type { PriorityFilter } from "@/types/orgis";
 
 export function FilterTabs({
   value,
@@ -64,4 +64,3 @@ export function FilterTabs({
     </div>
   );
 }
-

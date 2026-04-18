@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatFullTimestamp, priorityBadgeClass, priorityLabel, sourceBadgeClass, sourceLabel } from "@/lib/inbox";
 import { X } from "lucide-react";
-import type { InboxItem } from "@/types/polyboard";
+import type { InboxItem } from "@/types/orgis";
 
 export function MessageDrawer({
   item,

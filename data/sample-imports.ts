@@ -1,4 +1,4 @@
-import type { SourcePlatform } from "@/types/polyboard";
+import type { SourcePlatform } from "@/types/orgis";
 
 export type SampleImportKey = "whatsapp" | "telegram" | "discord" | "email";
 

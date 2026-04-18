@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Polyboard",
-  description: "A calm personal inbox triage app for fragmented communication."
+  title: "Orgis",
+  applicationName: "Orgis",
+  description: "Orgis is a calm personal inbox triage app for fragmented communication."
 };
 
 export default function RootLayout({
@@ -20,4 +21,3 @@ export default function RootLayout({
     </html>
   );
 }
-

@@ -41,7 +41,7 @@ export async function POST(request: Request) {
               "You triage a personal inbox. Be concise, conservative, and deterministic. Never invent deadlines, tasks, meetings, or events. Do not write a reply.",
             prompt: buildTriagePrompt(item),
             output: Output.object({
-              name: "PolyboardTriage",
+              name: "OrgisTriage",
               description: "A concise summary, priority, and reason for a personal inbox item.",
               schema: triageResponseSchema
             }),

@@ -1,6 +1,6 @@
-# Polyboard
+# Orgis
 
-Polyboard is a personal inbox triage app for fragmented communication. It is scoped to five things only:
+Orgis is a personal inbox triage app for fragmented communication. It is scoped to five things only:
 
 1. Import pasted text or uploaded text/JSON/CSV files.
 2. Show a unified inbox.
@@ -78,7 +78,7 @@ The prompt is conservative by design:
 ## Project structure
 
 - `app/` - route handlers, layout, and the dashboard page
-- `components/` - UI primitives and Polyboard dashboard components
+- `components/` - UI primitives and Orgis dashboard components
 - `data/` - seeded inbox data and sample imports
 - `lib/` - parsing, triage, and display helpers
 - `types/` - shared TypeScript types

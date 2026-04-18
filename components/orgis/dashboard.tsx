@@ -6,17 +6,17 @@ import { seededInbox } from "@/data/seeded-inbox";
 import { sampleImports, type SampleImportKey } from "@/data/sample-imports";
 import { parseImportedContent } from "@/lib/import-parsers";
 import { filterInboxItems, getDigestCounts, sortInboxItems } from "@/lib/inbox";
-import type { InboxItem, PriorityFilter } from "@/types/polyboard";
+import type { InboxItem, PriorityFilter } from "@/types/orgis";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DigestSummary } from "@/components/polyboard/digest-summary";
-import { EmptyState } from "@/components/polyboard/empty-state";
-import { ErrorState } from "@/components/polyboard/error-state";
-import { FilterTabs } from "@/components/polyboard/filter-tabs";
-import { InboxList } from "@/components/polyboard/inbox-list";
-import { ImportPanel } from "@/components/polyboard/import-panel";
-import { LoadingState } from "@/components/polyboard/loading-state";
-import { MessageDrawer } from "@/components/polyboard/message-drawer";
+import { DigestSummary } from "@/components/orgis/digest-summary";
+import { EmptyState } from "@/components/orgis/empty-state";
+import { ErrorState } from "@/components/orgis/error-state";
+import { FilterTabs } from "@/components/orgis/filter-tabs";
+import { InboxList } from "@/components/orgis/inbox-list";
+import { ImportPanel } from "@/components/orgis/import-panel";
+import { LoadingState } from "@/components/orgis/loading-state";
+import { MessageDrawer } from "@/components/orgis/message-drawer";
 
 export function Dashboard() {
   const [items, setItems] = useState<InboxItem[]>(() => sortInboxItems(seededInbox));
@@ -131,7 +131,7 @@ export function Dashboard() {
       <EmptyState
         icon={<Inbox className="h-5 w-5" />}
         title="No items in the inbox yet"
-        description="Paste messages, upload a sample file, or load one of the built-in platform examples to see Polyboard in action."
+        description="Paste messages, upload a sample file, or load one of the built-in platform examples to see Orgis in action."
         primaryActionLabel="Load WhatsApp sample"
         onPrimaryAction={() => {
           handleLoadSample("whatsapp");
@@ -156,7 +156,7 @@ export function Dashboard() {
     ) : null;
 
   const loadingState = busy ? (
-    <LoadingState title="Triaging imported items" description="Polyboard is summarizing and classifying each message." />
+    <LoadingState title="Triaging imported items" description="Orgis is summarizing and classifying each message." />
   ) : null;
 
   return (
@@ -176,7 +176,7 @@ export function Dashboard() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                  Polyboard
+                  Orgis
                 </h1>
                 <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
                   Turn pasted threads, text files, and sample platform exports into one calm inbox with summaries and priority cues.

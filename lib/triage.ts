@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DraftInboxItem, InboxItem, Priority, TriageResponse } from "@/types/polyboard";
+import type { DraftInboxItem, InboxItem, Priority, TriageResponse } from "@/types/orgis";
 
 export const triageResponseSchema = z.object({
   summary: z.string().trim().min(1).max(220),
@@ -139,4 +139,3 @@ export function applyTriageResult(item: DraftInboxItem, triage: TriageResponse):
     ...sanitizeTriageResponse(triage)
   };
 }
-

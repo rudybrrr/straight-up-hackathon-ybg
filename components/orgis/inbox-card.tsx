@@ -9,7 +9,7 @@ import {
   sourceBadgeClass,
   sourceLabel
 } from "@/lib/inbox";
-import type { InboxItem } from "@/types/polyboard";
+import type { InboxItem } from "@/types/orgis";
 
 export function InboxCard({
   item,
@@ -83,4 +83,3 @@ export function InboxCard({
     </button>
   );
 }
-
