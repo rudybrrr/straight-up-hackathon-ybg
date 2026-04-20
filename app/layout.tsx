@@ -25,7 +25,7 @@ export default function RootLayout({
             <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
               <div className="flex items-center gap-2 text-sm text-slate-700">
                 <span className="h-2 w-2 rounded-full bg-slate-900" aria-hidden="true" />
-                <span className="font-semibold text-slate-900">Orgis</span>
+                <span className="font-semibold text-slate-900">Organised Real-time Global Inbox System</span>
                 <span className="text-slate-400">&middot;</span>
                 <span className="text-slate-600">by</span>
                 <span className="font-semibold text-slate-900">YBG</span>

@@ -12,12 +12,18 @@ export function HamburgerDrawer({
   open,
   onClose,
   connectedApps,
-  lastUpdatedAt
+  lastUpdatedAt,
+  notificationPermission,
+  redAlertsEnabled,
+  onToggleRedAlerts
 }: {
   open: boolean;
   onClose: () => void;
   connectedApps: Array<{ source: SourcePlatform; count: number }>;
   lastUpdatedAt: string | null;
+  notificationPermission: NotificationPermission;
+  redAlertsEnabled: boolean;
+  onToggleRedAlerts: () => void | Promise<void>;
 }) {
   const [mounted, setMounted] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -203,8 +209,16 @@ export function HamburgerDrawer({
                     Preferences
                   </p>
                 </div>
-                <div className="rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                  Notifications, triage rules, and priority defaults (placeholder).
+                <div className="space-y-3 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-slate-600">
+                  <p className="font-semibold text-rose-700">Red alerts</p>
+                  <Button
+                    type="button"
+                    className="w-full rounded-2xl"
+                    variant={redAlertsEnabled ? "secondary" : "default"}
+                    onClick={onToggleRedAlerts}
+                  >
+                    {redAlertsEnabled ? "Disable red alerts" : "Enable red alerts"}
+                  </Button>
                 </div>
               </section>
             </div>

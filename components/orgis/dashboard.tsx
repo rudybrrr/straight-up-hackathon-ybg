@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Inbox, Menu } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Filter, Inbox, Menu } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,23 +66,6 @@ const sourceOptions: Array<{ key: "all" | SourcePlatform; label: string }> = [
   { key: "Other", label: "Other" }
 ];
 
-function sourceMonogram(source: SourcePlatform) {
-  switch (source) {
-    case "WhatsApp":
-      return "WA";
-    case "Telegram":
-      return "TG";
-    case "Discord":
-      return "DC";
-    case "Slack":
-      return "SL";
-    case "Email":
-      return "EM";
-    default:
-      return "OT";
-  }
-}
-
 function toOrgisSource(platform: string): SourcePlatform {
   const normalized = platform.trim().toLowerCase();
   if (normalized.includes("whatsapp")) return "WhatsApp";
@@ -146,6 +129,13 @@ export function Dashboard() {
   const [clearingRead, setClearingRead] = useState(false);
   const [confirmClearRead, setConfirmClearRead] = useState(false);
   const [clearReadError, setClearReadError] = useState<string | null>(null);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
+    () => (typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default")
+  );
+  const [redAlertsEnabled, setRedAlertsEnabled] = useState<boolean>(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const seenRedIdsRef = useRef<Set<string>>(new Set());
+  const initialBoardLoadedRef = useRef(false);
 
   const counts = getDigestCounts(items);
   const sourceCounts = getSourceCounts(items);
@@ -207,6 +197,27 @@ export function Dashboard() {
     }
   }, [readIds]);
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("orgis.redAlertsEnabled");
+      if (raw === null) {
+        return;
+      }
+
+      setRedAlertsEnabled(raw === "true");
+    } catch {
+      // Ignore malformed local storage.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("orgis.redAlertsEnabled", String(redAlertsEnabled));
+    } catch {
+      // Ignore storage failures (private mode, quota, etc).
+    }
+  }, [redAlertsEnabled]);
+
   const filteredBySource =
     sourceFilter === "all" ? items : items.filter((item) => item.source === sourceFilter);
   const filteredByPriority = filterInboxItems(filteredBySource, viewMode === "priority" ? filter : "all");
@@ -263,11 +274,42 @@ export function Dashboard() {
         }
 
         const flattened = payload.groups.flatMap((group) => group.messages.map(toInboxItem));
+        const currentRedIds = new Set(
+          flattened.filter((item) => item.priority === "act_now").map((item) => item.id)
+        );
+        const newRedItems = flattened.filter(
+          (item) => item.priority === "act_now" && !seenRedIdsRef.current.has(item.id)
+        );
 
         if (!cancelled) {
           setItems(sortInboxItems(flattened));
           setRefreshedAt(payload.refreshedAt ?? null);
           setSyncError(null);
+
+          if (initialBoardLoadedRef.current && redAlertsEnabled && newRedItems.length > 0) {
+            const canNotify =
+              typeof window !== "undefined" &&
+              "Notification" in window &&
+              Notification.permission === "granted";
+
+            if (canNotify) {
+              for (const item of newRedItems) {
+                const notification = new Notification("Orgis red alert", {
+                  body: `${item.sender} in ${item.chatOrThreadName}: ${item.summary}`,
+                  tag: item.id
+                });
+
+                notification.onclick = () => {
+                  window.focus();
+                  setSelectedItemId(item.id);
+                  notification.close();
+                };
+              }
+            }
+          }
+
+          seenRedIdsRef.current = currentRedIds;
+          initialBoardLoadedRef.current = true;
         }
       } catch (err) {
         if (!cancelled) {
@@ -288,6 +330,32 @@ export function Dashboard() {
       window.clearInterval(timer);
     };
   }, []);
+
+  async function handleToggleRedAlerts() {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setSyncError("This browser does not support notifications.");
+      return;
+    }
+
+    if (redAlertsEnabled) {
+      setRedAlertsEnabled(false);
+      return;
+    }
+
+    const permission =
+      Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission();
+
+    setNotificationPermission(permission);
+
+    if (permission === "granted") {
+      setRedAlertsEnabled(true);
+      seenRedIdsRef.current = new Set(
+        items.filter((item) => item.priority === "act_now").map((item) => item.id)
+      );
+    }
+  }
 
   const emptyState =
     items.length === 0 ? (
@@ -414,21 +482,6 @@ export function Dashboard() {
               <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-slate-700">
                 {activeSources.length} apps
               </Badge>
-              {refreshedAt ? (
-                <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-slate-700">
-                  Updated {formatTimestamp(refreshedAt)}
-                </Badge>
-              ) : null}
-              <Badge
-                className={cn(
-                  "border px-3 py-1",
-                  syncing
-                    ? "border-sky-200 bg-sky-50 text-sky-700"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                )}
-              >
-                {syncing ? "Refreshing..." : "Live"}
-              </Badge>
               <Button
                 type="button"
                 variant="outline"
@@ -529,7 +582,7 @@ export function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setViewMode("priority")}
@@ -557,114 +610,130 @@ export function Dashboard() {
                   >
                     New messages
                   </button>
+
+                  <Button
+                    type="button"
+                    variant={filtersOpen ? "default" : "outline"}
+                    size="icon"
+                    className="h-10 w-10 rounded-full"
+                    aria-label={filtersOpen ? "Hide filters" : "Show filters"}
+                    aria-pressed={filtersOpen}
+                    onClick={() => setFiltersOpen((current) => !current)}
+                  >
+                    <Filter className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {viewMode === "priority" ? (
-                  <div className="flex flex-wrap gap-2">
-                    {filterOptions.map((option) => {
-                      const active = filter === option.key;
+                {filtersOpen ? (
+                  <>
+                    {viewMode === "priority" ? (
+                      <div className="flex flex-wrap gap-2">
+                        {filterOptions.map((option) => {
+                          const active = filter === option.key;
 
-                      return (
-                        <button
-                          key={option.key}
+                          return (
+                            <button
+                              key={option.key}
+                              type="button"
+                              onClick={() => setFilter(option.key)}
+                              className={cn(
+                                "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                                active
+                                  ? "border-slate-950 bg-slate-950 text-white"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+
+                    <div className="flex flex-wrap gap-2">
+                      {sourceOptions
+                        .filter((option) => option.key === "all" || sourceCounts[option.key] > 0)
+                        .map((option) => {
+                          const active = sourceFilter === option.key;
+
+                          return (
+                            <button
+                              key={option.key}
+                              type="button"
+                              onClick={() => setSourceFilter(option.key)}
+                              className={cn(
+                                "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                                active
+                                  ? "border-slate-950 bg-slate-950 text-white"
+                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(
+                        [
+                          { key: "all", label: "All", countLabel: `${baseItems.length}` },
+                          { key: "unread", label: "Unread", countLabel: `${baseUnreadCount}` },
+                          { key: "read", label: "Read", countLabel: `${baseReadCount}` }
+                        ] as const
+                      ).map((option) => {
+                        const active = readFilter === option.key;
+
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            onClick={() => setReadFilter(option.key)}
+                            className={cn(
+                              "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                              "inline-flex items-center gap-2",
+                              active
+                                ? "border-slate-950 bg-slate-950 text-white"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                            )}
+                          >
+                            {option.label}
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 text-xs",
+                                active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"
+                              )}
+                            >
+                              {option.countLabel}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                      {readFilter === "read" ? (
+                        <Button
                           type="button"
-                          onClick={() => setFilter(option.key)}
-                          className={cn(
-                            "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                            active
-                              ? "border-slate-950 bg-slate-950 text-white"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                          )}
+                          variant="destructive"
+                          size="sm"
+                          className="rounded-full"
+                          disabled={clearingRead || baseReadCount === 0}
+                          onClick={handleClearRead}
                         >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : null}
+                          {clearingRead
+                            ? "Clearing..."
+                            : confirmClearRead
+                              ? "Confirm clear"
+                              : "Clear read"}
+                        </Button>
+                      ) : null}
+                    </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {sourceOptions
-                    .filter((option) => option.key === "all" || sourceCounts[option.key] > 0)
-                    .map((option) => {
-                      const active = sourceFilter === option.key;
-
-                      return (
-                        <button
-                          key={option.key}
-                          type="button"
-                          onClick={() => setSourceFilter(option.key)}
-                          className={cn(
-                            "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                            active
-                              ? "border-slate-950 bg-slate-950 text-white"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {(
-                    [
-                      { key: "all", label: "All", countLabel: `${baseItems.length}` },
-                      { key: "unread", label: "Unread", countLabel: `${baseUnreadCount}` },
-                      { key: "read", label: "Read", countLabel: `${baseReadCount}` }
-                    ] as const
-                  ).map((option) => {
-                    const active = readFilter === option.key;
-
-                    return (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => setReadFilter(option.key)}
-                        className={cn(
-                          "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                          "inline-flex items-center gap-2",
-                          active
-                            ? "border-slate-950 bg-slate-950 text-white"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                        )}
-                      >
-                        {option.label}
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-xs",
-                            active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"
-                          )}
-                        >
-                          {option.countLabel}
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  {readFilter === "read" ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="rounded-full"
-                      disabled={clearingRead || baseReadCount === 0}
-                      onClick={handleClearRead}
-                    >
-                      {clearingRead
-                        ? "Clearing..."
-                        : confirmClearRead
-                          ? "Confirm clear"
-                          : "Clear read"}
-                    </Button>
-                  ) : null}
-                </div>
-
-                {readFilter === "read" && clearReadError ? (
-                  <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {clearReadError}
-                  </div>
+                    {readFilter === "read" && clearReadError ? (
+                      <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        {clearReadError}
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
               </CardHeader>
 
@@ -673,14 +742,14 @@ export function Dashboard() {
                   <div className="p-5">{emptyState}</div>
                 ) : (
                   <>
-                    <div className="hidden grid-cols-[148px_132px_minmax(0,1fr)_112px] gap-4 border-b border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 md:grid">
-                      <span>App</span>
-                      <span>Priority</span>
-                      <span>Message</span>
+                    <div className="hidden grid-cols-[148px_132px_minmax(0,1fr)_112px] gap-4 border-b border-slate-400 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 md:grid">
+                      <span className="border-r border-slate-400 pr-4">App</span>
+                      <span className="border-r border-slate-400 pr-4">Priority</span>
+                      <span className="border-r border-slate-400 pr-4">Message</span>
                       <span className="text-right">Updated</span>
                     </div>
 
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-slate-300">
                       {visibleItems.map((item) => {
                         const selected = item.id === selectedItemId;
                         const read = isRead(item.id);
@@ -690,31 +759,23 @@ export function Dashboard() {
                             key={item.id}
                             type="button"
                             onClick={() => setSelectedItemId(item.id)}
-                            aria-haspopup="dialog"
-                            aria-expanded={selected}
-                            className={cn(
+                          aria-haspopup="dialog"
+                          aria-expanded={selected}
+                          className={cn(
                               "w-full px-5 py-4 text-left transition-colors",
+                              "border-b border-slate-300 last:border-b-0",
                               "hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950/40 focus-visible:ring-offset-2",
                               selected ? "bg-slate-50" : "bg-transparent"
                             )}
                           >
                             <div className="grid gap-3 md:grid-cols-[148px_132px_minmax(0,1fr)_112px] md:items-center md:gap-4">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={cn(
-                                    "flex h-9 w-9 items-center justify-center rounded-2xl border text-[11px] font-semibold",
-                                    sourceBadgeClass(item.source)
-                                  )}
-                                  aria-hidden="true"
-                                >
-                                  {sourceMonogram(item.source)}
-                                </span>
+                              <div className="flex items-center gap-2 md:border-r md:border-slate-400 md:pr-4">
                                 <Badge className={cn("border", sourceBadgeClass(item.source))}>
                                   {sourceLabel(item.source)}
                                 </Badge>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 md:border-r md:border-slate-400 md:pr-4">
                                 <Badge className={cn("border", priorityBadgeClass(item.priority))}>
                                   {priorityLabel(item.priority)}
                                 </Badge>
@@ -731,7 +792,7 @@ export function Dashboard() {
                                 )}
                               </div>
 
-                              <div className="min-w-0">
+                              <div className="min-w-0 md:border-r md:border-slate-400 md:pr-4">
                                 <p
                                   className={cn(
                                     "text-sm font-semibold",
@@ -774,6 +835,9 @@ export function Dashboard() {
           count
         }))}
         lastUpdatedAt={refreshedAt}
+        notificationPermission={notificationPermission}
+        redAlertsEnabled={redAlertsEnabled}
+        onToggleRedAlerts={handleToggleRedAlerts}
       />
       <MessageDrawer
         item={selectedItem}
