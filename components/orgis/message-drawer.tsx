@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   formatFullTimestamp,
@@ -33,10 +34,15 @@ export function MessageDrawer({
   onReply: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+  const [replySuccess, setReplySuccess] = useState<string | null>(null);
   const titleId = useId();
   const closeRef = useRef(onClose);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const originalRef = useRef<HTMLElement | null>(null);
+  const replyRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     closeRef.current = onClose;
@@ -52,6 +58,9 @@ export function MessageDrawer({
     }
 
     closeButtonRef.current?.focus();
+    setReplyText("");
+    setReplyError(null);
+    setReplySuccess(null);
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -73,6 +82,8 @@ export function MessageDrawer({
   if (!mounted || !item) {
     return null;
   }
+
+  const canReply = Boolean(item.beeperChatId);
 
   return createPortal(
     <div className="fixed inset-0 z-50">
@@ -172,11 +183,103 @@ export function MessageDrawer({
                 type="button"
                 variant="outline"
                 className="rounded-full"
-                onClick={onReply}
+                onClick={() => {
+                  replyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                disabled={!canReply}
               >
                 Reply
               </Button>
+              {canReply ? (
+                <a
+                  href={`beeper://chat/${encodeURIComponent(item.beeperChatId ?? "")}`}
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-slate-50"
+                >
+                  Open in Beeper
+                </a>
+              ) : null}
             </div>
+
+            {canReply ? (
+              <section
+                ref={replyRef}
+                className="mt-4 rounded-3xl border border-slate-200 bg-white p-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Reply
+                  </p>
+                  {replyError ? <p className="text-xs font-medium text-rose-700">{replyError}</p> : null}
+                  {!replyError && replySuccess ? (
+                    <p className="text-xs font-medium text-emerald-700">{replySuccess}</p>
+                  ) : null}
+                </div>
+                <Textarea
+                  value={replyText}
+                  onChange={(event) => setReplyText(event.target.value)}
+                  placeholder="Type a reply to send via Beeper…"
+                  className="mt-3 min-h-24 rounded-3xl"
+                  disabled={replyBusy}
+                />
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    className="rounded-full"
+                    disabled={replyBusy || replyText.trim().length === 0}
+                    onClick={async () => {
+                      if (!item.beeperChatId) {
+                        return;
+                      }
+
+                      setReplyBusy(true);
+                      setReplyError(null);
+                      setReplySuccess(null);
+
+                      try {
+                        const response = await fetch("/api/beeper/reply", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json"
+                          },
+                          body: JSON.stringify({
+                            chatId: item.beeperChatId,
+                            text: replyText.trim()
+                          })
+                        });
+
+                        const payload = (await response.json()) as { ok?: boolean; error?: string };
+                        if (!response.ok || !payload.ok) {
+                          throw new Error(payload.error ?? `Reply failed: ${response.status}`);
+                        }
+
+                        onReply();
+                        setReplyText("");
+                        setReplySuccess("Sent to Beeper.");
+                      } catch (error) {
+                        setReplyError(error instanceof Error ? error.message : "Reply failed.");
+                      } finally {
+                        setReplyBusy(false);
+                      }
+                    }}
+                  >
+                    {replyBusy ? "Sending…" : "Send reply"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={replyBusy}
+                    onClick={() => setReplyText("")}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </section>
+            ) : (
+              <div className="mt-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                Reply is unavailable for this message (missing Beeper chat id).
+              </div>
+            )}
 
             {item.isThread ? (
               <div className="mt-4">

@@ -5,6 +5,8 @@ export type BeeperPriorityColor = "red" | "yellow" | "green";
 
 export type BeeperBoardMessage = {
   beeperMessageId: string;
+  beeperChatId: string;
+  accountId: string;
   senderName: string;
   chatName: string;
   sourcePlatform: string;
@@ -47,6 +49,8 @@ export async function fetchBeeperBoardMessages(limit = 100) {
     `
       SELECT
         m.beeper_message_id,
+        m.beeper_chat_id,
+        m.account_id,
         m.sender_name,
         m.chat_name,
         m.source_platform,
@@ -66,6 +70,8 @@ export async function fetchBeeperBoardMessages(limit = 100) {
 
   const result = rows as Array<{
     beeper_message_id: string;
+    beeper_chat_id: string;
+    account_id: string;
     sender_name: string;
     chat_name: string;
     source_platform: string;
@@ -79,6 +85,8 @@ export async function fetchBeeperBoardMessages(limit = 100) {
 
   return result.map((row) => ({
     beeperMessageId: row.beeper_message_id,
+    beeperChatId: row.beeper_chat_id,
+    accountId: row.account_id,
     senderName: row.sender_name,
     chatName: row.chat_name,
     sourcePlatform: row.source_platform,

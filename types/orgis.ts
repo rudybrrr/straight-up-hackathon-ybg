@@ -19,6 +19,9 @@ export interface InboxItem extends DraftInboxItem {
   summary: string;
   priority: Priority;
   reason: string;
+  beeperChatId?: string;
+  beeperMessageId?: string;
+  accountId?: string;
 }
 
 export interface TriageResponse {

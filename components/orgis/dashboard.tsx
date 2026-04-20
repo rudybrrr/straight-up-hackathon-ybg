@@ -28,6 +28,8 @@ type BeeperPriorityColor = "red" | "yellow" | "green";
 
 type BeeperBoardMessage = {
   beeperMessageId: string;
+  beeperChatId: string;
+  accountId: string;
   senderName: string;
   chatName: string;
   sourcePlatform: string;
@@ -112,7 +114,10 @@ function toInboxItem(message: BeeperBoardMessage): InboxItem {
     summary: message.summary || "Incoming message.",
     priority: toOrgisPriority(message.priorityColor),
     reason: message.reason || "No reason stored yet.",
-    isThread: false
+    isThread: false,
+    beeperChatId: message.beeperChatId,
+    beeperMessageId: message.beeperMessageId,
+    accountId: message.accountId
   };
 }
 
@@ -612,7 +617,6 @@ export function Dashboard() {
           if (selectedItem) {
             markRead(selectedItem.id);
           }
-          setSelectedItemId(null);
         }}
       />
     </div>
