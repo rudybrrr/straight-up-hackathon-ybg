@@ -43,6 +43,9 @@ export function MessageDrawer({
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const originalRef = useRef<HTMLElement | null>(null);
   const replyRef = useRef<HTMLElement | null>(null);
+  const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const itemId = item?.id ?? null;
+  const beeperChatId = item?.beeperChatId ?? null;
 
   useEffect(() => {
     closeRef.current = onClose;
@@ -53,14 +56,21 @@ export function MessageDrawer({
   }, []);
 
   useEffect(() => {
-    if (!item) {
+    if (!itemId) {
       return;
     }
 
-    closeButtonRef.current?.focus();
     setReplyText("");
     setReplyError(null);
     setReplySuccess(null);
+
+    window.requestAnimationFrame(() => {
+      if (beeperChatId) {
+        replyTextareaRef.current?.focus();
+      } else {
+        closeButtonRef.current?.focus();
+      }
+    });
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -77,7 +87,7 @@ export function MessageDrawer({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [item]);
+  }, [beeperChatId, itemId]);
 
   if (!mounted || !item) {
     return null;
@@ -90,7 +100,7 @@ export function MessageDrawer({
       <button
         type="button"
         aria-label="Close detail drawer"
-        className="absolute inset-0 bg-slate-950/45 backdrop-blur-[3px]"
+        className="absolute inset-0 z-0 bg-slate-950/45 backdrop-blur-[3px]"
         onClick={onClose}
       />
 
@@ -99,7 +109,7 @@ export function MessageDrawer({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "absolute right-0 top-0 h-full w-full border-l border-slate-200 bg-white shadow-2xl",
+          "absolute right-0 top-0 z-10 h-full w-full border-l border-slate-200 bg-white shadow-2xl",
           "sm:max-w-xl"
         )}
       >
@@ -185,6 +195,7 @@ export function MessageDrawer({
                 className="rounded-full"
                 onClick={() => {
                   replyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  window.setTimeout(() => replyTextareaRef.current?.focus(), 120);
                 }}
                 disabled={!canReply}
               >
@@ -215,6 +226,7 @@ export function MessageDrawer({
                   ) : null}
                 </div>
                 <Textarea
+                  ref={replyTextareaRef}
                   value={replyText}
                   onChange={(event) => setReplyText(event.target.value)}
                   placeholder="Type a reply to send via Beeper…"

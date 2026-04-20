@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/orgis/empty-state";
 import { HamburgerDrawer } from "@/components/orgis/hamburger-drawer";
 import { MessageDrawer } from "@/components/orgis/message-drawer";
 import { OrgisLogo } from "@/components/orgis/orgis-logo";
+import { DonutChart } from "@/components/orgis/donut-chart";
 import {
   filterInboxItems,
   formatTimestamp,
@@ -128,12 +129,14 @@ type BeeperBoardPayload = {
 };
 
 type ReadFilter = "all" | "unread" | "read";
+type ViewMode = "priority" | "new";
 
 export function Dashboard() {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [filter, setFilter] = useState<PriorityFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourcePlatform>("all");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("priority");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -206,12 +209,26 @@ export function Dashboard() {
 
   const filteredBySource =
     sourceFilter === "all" ? items : items.filter((item) => item.source === sourceFilter);
-  const filteredByPriority = filterInboxItems(filteredBySource, filter);
-  const baseItems = sortInboxItems(filteredByPriority);
+  const filteredByPriority = filterInboxItems(filteredBySource, viewMode === "priority" ? filter : "all");
+
+  const baseItems =
+    viewMode === "new"
+      ? [...filteredByPriority].sort((a, b) => {
+          const timeDelta = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+          if (timeDelta !== 0) {
+            return timeDelta;
+          }
+
+          return a.sender.localeCompare(b.sender);
+        })
+      : sortInboxItems(filteredByPriority);
+
   const visibleItems =
     readFilter === "all"
       ? baseItems
-      : baseItems.filter((item) => (readFilter === "read" ? isRead(item.id) : !isRead(item.id)));
+      : baseItems.filter((item) =>
+          readFilter === "read" ? isRead(item.id) : !isRead(item.id)
+        );
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
 
   useEffect(() => {
@@ -283,12 +300,17 @@ export function Dashboard() {
       <EmptyState
         icon={<Inbox className="h-5 w-5" />}
         title="No messages in this filter"
-        description="Switch filters to show other threads."
+        description={
+          viewMode === "new"
+            ? "No unread messages right now."
+            : "Switch filters to show other threads."
+        }
         primaryActionLabel="Show all"
         onPrimaryAction={() => {
           setFilter("all");
           setSourceFilter("all");
           setReadFilter("all");
+          setViewMode("priority");
         }}
       />
     ) : null;
@@ -405,7 +427,7 @@ export function Dashboard() {
                     : "border-emerald-200 bg-emerald-50 text-emerald-700"
                 )}
               >
-                {syncing ? "Refreshing…" : "Live"}
+                {syncing ? "Refreshing..." : "Live"}
               </Badge>
               <Button
                 type="button"
@@ -432,18 +454,45 @@ export function Dashboard() {
 
           <Card className="border-slate-200/80 bg-white/90">
             <CardContent className="p-5">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-[1.5rem] border border-rose-200/80 bg-gradient-to-br from-white to-rose-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Act now</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.act_now}</p>
-                </div>
-                <div className="rounded-[1.5rem] border border-amber-200/80 bg-gradient-to-br from-white to-amber-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Review</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.review_soon}</p>
-                </div>
-                <div className="rounded-[1.5rem] border border-sky-200/70 bg-gradient-to-br from-white to-sky-50 px-4 py-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Later</p>
-                  <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.for_later}</p>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
+                <DonutChart
+                  title="Queue distribution"
+                  subtitle="Act now, review soon, and for later at a glance."
+                  slices={[
+                    {
+                      key: "act_now",
+                      label: "Act now",
+                      value: counts.act_now,
+                      className: "text-rose-600 stroke-rose-500"
+                    },
+                    {
+                      key: "review_soon",
+                      label: "Review",
+                      value: counts.review_soon,
+                      className: "text-amber-600 stroke-amber-500"
+                    },
+                    {
+                      key: "for_later",
+                      label: "Later",
+                      value: counts.for_later,
+                      className: "text-sky-600 stroke-sky-500"
+                    }
+                  ]}
+                />
+
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+                  <div className="rounded-[1.5rem] border border-rose-200/80 bg-gradient-to-br from-white to-rose-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Act now</p>
+                    <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.act_now}</p>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-amber-200/80 bg-gradient-to-br from-white to-amber-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Review</p>
+                    <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.review_soon}</p>
+                  </div>
+                  <div className="rounded-[1.5rem] border border-sky-200/70 bg-gradient-to-br from-white to-sky-50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Later</p>
+                    <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.for_later}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -457,7 +506,11 @@ export function Dashboard() {
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                   <div className="space-y-1">
                     <CardTitle>Priority list</CardTitle>
-                    <CardDescription>Urgency first, then most recent activity.</CardDescription>
+                    <CardDescription>
+                      {viewMode === "new"
+                        ? "Unread messages only, sorted by latest activity."
+                        : "Urgency first, then most recent activity."}
+                    </CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge className="w-fit border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">
@@ -477,26 +530,58 @@ export function Dashboard() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {filterOptions.map((option) => {
-                    const active = filter === option.key;
-
-                    return (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => setFilter(option.key)}
-                        className={cn(
-                          "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                          active
-                            ? "border-slate-950 bg-slate-950 text-white"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                  <button
+                    type="button"
+                    onClick={() => setViewMode("priority")}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                      viewMode === "priority"
+                        ? "border-slate-950 bg-slate-950 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    )}
+                  >
+                    Priority view
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewMode("new");
+                      setReadFilter("unread");
+                    }}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                      viewMode === "new"
+                        ? "border-slate-950 bg-slate-950 text-white"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    )}
+                  >
+                    New messages
+                  </button>
                 </div>
+
+                {viewMode === "priority" ? (
+                  <div className="flex flex-wrap gap-2">
+                    {filterOptions.map((option) => {
+                      const active = filter === option.key;
+
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setFilter(option.key)}
+                          className={cn(
+                            "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                            active
+                              ? "border-slate-950 bg-slate-950 text-white"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
 
                 <div className="flex flex-wrap gap-2">
                   {sourceOptions
@@ -568,7 +653,7 @@ export function Dashboard() {
                       onClick={handleClearRead}
                     >
                       {clearingRead
-                        ? "Clearing…"
+                        ? "Clearing..."
                         : confirmClearRead
                           ? "Confirm clear"
                           : "Clear read"}
