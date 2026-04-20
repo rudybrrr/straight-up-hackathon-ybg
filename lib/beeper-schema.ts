@@ -40,6 +40,13 @@ const beeperMessageTriageSchema = `
   )
 `;
 
+const beeperMessagePinsSchema = `
+  CREATE TABLE IF NOT EXISTS beeper_message_pins (
+    beeper_message_id VARCHAR(191) NOT NULL PRIMARY KEY,
+    pinned_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+  )
+`;
+
 const beeperPreferencesSchema = `
   CREATE TABLE IF NOT EXISTS beeper_preferences (
     preference_key VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -57,6 +64,7 @@ export function ensureBeeperSchema() {
       await pool.execute(beeperMessagesSchema);
       await pool.execute(beeperChatStateSchema);
       await pool.execute(beeperMessageTriageSchema);
+      await pool.execute(beeperMessagePinsSchema);
       await pool.execute(beeperPreferencesSchema);
     })();
   }

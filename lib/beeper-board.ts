@@ -18,6 +18,7 @@ export type BeeperBoardMessage = {
   summary: string;
   reason: string;
   triagedAt: string | null;
+  isPinned: boolean;
 };
 
 export type BeeperBoardGroup = {
@@ -59,6 +60,7 @@ export async function fetchBeeperBoardMessages(limit = 100) {
         m.source_platform,
         m.raw_content,
         m.message_timestamp,
+        p.beeper_message_id IS NOT NULL AS is_pinned,
         COALESCE(t.priority_color, 'yellow') AS priority_color,
         COALESCE(t.summary, '') AS summary,
         COALESCE(t.reason, '') AS reason,
@@ -66,6 +68,8 @@ export async function fetchBeeperBoardMessages(limit = 100) {
       FROM beeper_messages m
       LEFT JOIN beeper_message_triage t
         ON t.beeper_message_id = m.beeper_message_id
+      LEFT JOIN beeper_message_pins p
+        ON p.beeper_message_id = m.beeper_message_id
       ORDER BY m.message_timestamp DESC
       LIMIT ${safeLimit}
     `
@@ -84,6 +88,7 @@ export async function fetchBeeperBoardMessages(limit = 100) {
     summary: string;
     reason: string;
     triaged_at: Date | string | null;
+    is_pinned: number | boolean;
   }>;
 
   return result.map((row) => {
@@ -115,6 +120,7 @@ export async function fetchBeeperBoardMessages(limit = 100) {
       priorityColor: resolvedPriority.priorityColor ?? row.priority_color,
       summary: row.summary,
       reason: resolvedPriority.reason ?? row.reason,
+      isPinned: Boolean(row.is_pinned),
       triagedAt:
         row.triaged_at instanceof Date
           ? row.triaged_at.toISOString()

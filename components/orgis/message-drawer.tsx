@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { Pin, PinOff, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,7 +24,10 @@ export function MessageDrawer({
   isRead,
   onMarkRead,
   onMarkUnread,
-  onReply
+  onReply,
+  isPinned,
+  pinBusy,
+  onTogglePin
 }: {
   item: InboxItem | null;
   onClose: () => void;
@@ -32,6 +35,9 @@ export function MessageDrawer({
   onMarkRead: () => void;
   onMarkUnread: () => void;
   onReply: () => void;
+  isPinned: boolean;
+  pinBusy: boolean;
+  onTogglePin: () => void | Promise<void>;
 }) {
   const [mounted, setMounted] = useState(false);
   const [replyText, setReplyText] = useState("");
@@ -144,17 +150,30 @@ export function MessageDrawer({
                 </div>
               </div>
 
-              <Button
-                ref={closeButtonRef}
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                aria-label="Close drawer"
-                className="text-white hover:bg-white/10 hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+                  onClick={onTogglePin}
+                  disabled={pinBusy}
+                >
+                  {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                  <span>{pinBusy ? "Saving..." : isPinned ? "Unpin" : "Pin"}</span>
+                </Button>
+
+                <Button
+                  ref={closeButtonRef}
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  aria-label="Close drawer"
+                  className="text-white hover:bg-white/10 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 

@@ -8,6 +8,11 @@ export const priorityOrder: Record<Priority, number> = {
 
 export function sortInboxItems(items: InboxItem[]) {
   return [...items].sort((a, b) => {
+    const pinDelta = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+    if (pinDelta !== 0) {
+      return pinDelta;
+    }
+
     const priorityDelta = priorityOrder[a.priority] - priorityOrder[b.priority];
     if (priorityDelta !== 0) {
       return priorityDelta;
@@ -143,4 +148,25 @@ export function formatMessageBody(value: string) {
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function matchesInboxSearch(item: InboxItem, query: string) {
+  const cleaned = query.trim().toLowerCase();
+  if (!cleaned) {
+    return true;
+  }
+
+  const haystack = [
+    item.sender,
+    item.chatOrThreadName,
+    item.summary,
+    item.rawContent,
+    item.reason,
+    item.source,
+    item.priority
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(cleaned);
 }

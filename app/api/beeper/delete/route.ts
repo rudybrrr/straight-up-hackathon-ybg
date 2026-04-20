@@ -40,9 +40,41 @@ export async function POST(request: Request) {
     try {
       await connection.beginTransaction();
 
+      const [pinnedRows] = await connection.execute(
+        `
+          SELECT beeper_message_id
+          FROM beeper_message_pins
+          WHERE beeper_message_id IN (${placeholders})
+        `,
+        messageIds
+      );
+
+      const pinnedIds = (pinnedRows as Array<{ beeper_message_id: string }>).map(
+        (row) => row.beeper_message_id
+      );
+
+      if (pinnedIds.length > 0) {
+        await connection.rollback();
+        return NextResponse.json(
+          {
+            error: "Pinned messages must be unpinned before deletion.",
+            pinnedIds
+          },
+          { status: 409 }
+        );
+      }
+
       await connection.execute(
         `
           DELETE FROM beeper_message_triage
+          WHERE beeper_message_id IN (${placeholders})
+        `,
+        messageIds
+      );
+
+      await connection.execute(
+        `
+          DELETE FROM beeper_message_pins
           WHERE beeper_message_id IN (${placeholders})
         `,
         messageIds

@@ -22,6 +22,7 @@ export interface InboxItem extends DraftInboxItem {
   beeperChatId?: string;
   beeperMessageId?: string;
   accountId?: string;
+  isPinned?: boolean;
 }
 
 export interface TriageResponse {

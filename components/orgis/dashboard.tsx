@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Filter, Inbox, Menu } from "lucide-react";
+import { Filter, Inbox, Menu, Pin, PinOff, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
   getDigestCounts,
   getSourceCounts,
   previewText,
+  matchesInboxSearch,
   priorityBadgeClass,
   priorityLabel,
   sortInboxItems,
@@ -40,6 +41,7 @@ type BeeperBoardMessage = {
   summary: string;
   reason: string;
   triagedAt: string | null;
+  isPinned: boolean;
 };
 
 type BeeperBoardGroup = {
@@ -101,7 +103,8 @@ function toInboxItem(message: BeeperBoardMessage): InboxItem {
     isThread: false,
     beeperChatId: message.beeperChatId,
     beeperMessageId: message.beeperMessageId,
-    accountId: message.accountId
+    accountId: message.accountId,
+    isPinned: message.isPinned
   };
 }
 
@@ -118,12 +121,15 @@ type BeeperTriagePreferences = {
 
 type ReadFilter = "all" | "unread" | "read";
 type ViewMode = "priority" | "new";
+type PinFilter = "all" | "pinned";
 
 export function Dashboard() {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [filter, setFilter] = useState<PriorityFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourcePlatform>("all");
   const [readFilter, setReadFilter] = useState<ReadFilter>("all");
+  const [pinFilter, setPinFilter] = useState<PinFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("priority");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -134,6 +140,7 @@ export function Dashboard() {
   const [clearingRead, setClearingRead] = useState(false);
   const [confirmClearRead, setConfirmClearRead] = useState(false);
   const [clearReadError, setClearReadError] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     () => (typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default")
   );
@@ -152,7 +159,6 @@ export function Dashboard() {
   const activeSources = (Object.entries(sourceCounts) as Array<[SourcePlatform, number]>).filter(
     ([, count]) => count > 0
   );
-
   function isRead(id: string) {
     return readIds.has(id);
   }
@@ -309,19 +315,27 @@ export function Dashboard() {
   const baseItems =
     viewMode === "new"
       ? [...filteredByPriority].sort((a, b) => {
+          const pinDelta = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+          if (pinDelta !== 0) {
+            return pinDelta;
+          }
+
           const timeDelta = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
           if (timeDelta !== 0) {
             return timeDelta;
           }
 
           return a.sender.localeCompare(b.sender);
-        })
+      })
       : sortInboxItems(filteredByPriority);
+
+  const pinVisibleBaseItems = pinFilter === "pinned" ? baseItems.filter((item) => item.isPinned) : baseItems;
+  const searchedItems = pinVisibleBaseItems.filter((item) => matchesInboxSearch(item, searchQuery));
 
   const visibleItems =
     readFilter === "all"
-      ? baseItems
-      : baseItems.filter((item) =>
+      ? searchedItems
+      : searchedItems.filter((item) =>
           readFilter === "read" ? isRead(item.id) : !isRead(item.id)
         );
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
@@ -453,9 +467,11 @@ export function Dashboard() {
         icon={<Inbox className="h-5 w-5" />}
         title="No messages in this filter"
         description={
-          viewMode === "new"
-            ? "No unread messages right now."
-            : "Switch filters to show other threads."
+          searchQuery
+            ? `No messages match "${searchQuery}".`
+            : viewMode === "new"
+              ? "No unread messages right now."
+              : "Switch filters to show other threads."
         }
         primaryActionLabel="Show all"
         onPrimaryAction={() => {
@@ -463,6 +479,8 @@ export function Dashboard() {
           setSourceFilter("all");
           setReadFilter("all");
           setViewMode("priority");
+          setPinFilter("all");
+          setSearchQuery("");
         }}
       />
     ) : null;
@@ -497,13 +515,14 @@ export function Dashboard() {
     }
 
     const readItems = baseItems.filter((item) => isRead(item.id));
-    const beeperMessageIds = readItems
+    const deletableReadItems = readItems.filter((item) => !item.isPinned);
+    const beeperMessageIds = deletableReadItems
       .map((item) => item.beeperMessageId)
       .filter((value): value is string => Boolean(value));
 
     if (beeperMessageIds.length === 0) {
       setConfirmClearRead(false);
-      setClearReadError("Nothing to delete from the database.");
+      setClearReadError(null);
       return;
     }
 
@@ -526,7 +545,7 @@ export function Dashboard() {
         throw new Error(payload.error ?? `Delete failed: ${response.status}`);
       }
 
-      const deletedIdSet = new Set(readItems.map((item) => item.id));
+      const deletedIdSet = new Set(deletableReadItems.map((item) => item.id));
 
       setItems((current) => current.filter((item) => !deletedIdSet.has(item.id)));
       setReadIds((current) => {
@@ -538,11 +557,73 @@ export function Dashboard() {
       });
       setSelectedItemId((current) => (current && deletedIdSet.has(current) ? null : current));
       setConfirmClearRead(false);
+      setClearReadError(null);
     } catch (error) {
       setClearReadError(error instanceof Error ? error.message : "Delete failed.");
     } finally {
       setClearingRead(false);
     }
+  }
+
+  async function togglePinForItem(targetItem: InboxItem) {
+    if (pinBusy) {
+      return;
+    }
+
+    const messageId = targetItem.beeperMessageId;
+    if (!messageId) {
+      setSyncError("This message cannot be pinned.");
+      return;
+    }
+
+    const nextPinned = !Boolean(targetItem.isPinned);
+    setPinBusy(true);
+    setSyncError(null);
+
+    setItems((current) =>
+      sortInboxItems(
+        current.map((item) =>
+          item.id === targetItem.id ? { ...item, isPinned: nextPinned } : item
+        )
+      )
+    );
+
+    try {
+      const response = await fetch("/api/beeper/pin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messageId,
+          pinned: nextPinned
+        })
+      });
+
+      const payload = (await response.json()) as { ok?: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? `Pin update failed: ${response.status}`);
+      }
+    } catch (error) {
+      setItems((current) =>
+        sortInboxItems(
+          current.map((item) =>
+            item.id === targetItem.id ? { ...item, isPinned: !nextPinned } : item
+          )
+        )
+      );
+      setSyncError(error instanceof Error ? error.message : "Pin update failed.");
+    } finally {
+      setPinBusy(false);
+    }
+  }
+
+  async function handleTogglePin() {
+    if (!selectedItem) {
+      return;
+    }
+
+    await togglePinForItem(selectedItem);
   }
 
   return (
@@ -684,6 +765,7 @@ export function Dashboard() {
                     onClick={() => {
                       setViewMode("new");
                       setReadFilter("unread");
+                      setPinFilter("all");
                     }}
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
@@ -693,6 +775,22 @@ export function Dashboard() {
                     )}
                   >
                     New messages
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPinFilter((current) => (current === "pinned" ? "all" : "pinned"))}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                      pinFilter === "pinned"
+                        ? "border-amber-500 bg-amber-50 text-amber-800"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Pin className="h-4 w-4" />
+                      Pinned
+                    </span>
                   </button>
 
                   <Button
@@ -706,6 +804,27 @@ export function Dashboard() {
                   >
                     <Filter className="h-4 w-4" />
                   </Button>
+                </div>
+
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search sender, chat, or message"
+                    className="h-11 w-full rounded-full border border-slate-200 bg-white pl-11 pr-11 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      aria-label="Clear search"
+                      className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
                 </div>
 
                 {filtersOpen ? (
@@ -817,6 +936,18 @@ export function Dashboard() {
                         {clearReadError}
                       </div>
                     ) : null}
+
+                    {pinFilter === "pinned" ? (
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                        Showing pinned messages
+                      </div>
+                    ) : null}
+
+                    {searchQuery ? (
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Searching for "{searchQuery}"
+                      </div>
+                    ) : null}
                   </>
                 ) : null}
               </CardHeader>
@@ -839,13 +970,20 @@ export function Dashboard() {
                         const read = isRead(item.id);
 
                         return (
-                          <button
+                          <div
                             key={item.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
+                            aria-haspopup="dialog"
+                            aria-expanded={selected}
                             onClick={() => setSelectedItemId(item.id)}
-                          aria-haspopup="dialog"
-                          aria-expanded={selected}
-                          className={cn(
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setSelectedItemId(item.id);
+                              }
+                            }}
+                            className={cn(
                               "w-full px-5 py-4 text-left transition-colors",
                               "border-b border-slate-300 last:border-b-0",
                               "hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950/40 focus-visible:ring-offset-2",
@@ -888,6 +1026,15 @@ export function Dashboard() {
                                     {" "}
                                     | {item.chatOrThreadName}
                                   </span>
+                                  {item.isPinned ? (
+                                    <span
+                                      className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-800"
+                                      title="Pinned"
+                                      aria-label="Pinned"
+                                    >
+                                      <Pin className="h-3 w-3" />
+                                    </span>
+                                  ) : null}
                                 </p>
                                 <p className="mt-1 text-sm leading-6 text-slate-600">{item.summary}</p>
                                 <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -895,11 +1042,28 @@ export function Dashboard() {
                                 </p>
                               </div>
 
-                              <div className="text-left text-xs text-slate-500 md:text-right">
-                                {formatTimestamp(item.timestamp)}
+                              <div className="flex items-center justify-between gap-2 text-left text-xs text-slate-500 md:border-l md:border-slate-400 md:pl-4 md:text-right">
+                                <span>{formatTimestamp(item.timestamp)}</span>
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
+                                    item.isPinned
+                                      ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                      : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                                  )}
+                                  aria-label={item.isPinned ? "Unpin message" : "Pin message"}
+                                  title={item.isPinned ? "Unpin" : "Pin"}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    void togglePinForItem(item);
+                                  }}
+                                >
+                                  {item.isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                                </button>
                               </div>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -947,6 +1111,9 @@ export function Dashboard() {
             markRead(selectedItem.id);
           }
         }}
+        isPinned={selectedItem ? Boolean(selectedItem.isPinned) : false}
+        pinBusy={pinBusy}
+        onTogglePin={handleTogglePin}
       />
     </div>
   );
