@@ -134,3 +134,13 @@ export function previewText(value: string, maxLength = 120) {
 
   return `${cleaned.slice(0, maxLength - 3).trimEnd()}...`;
 }
+
+export function formatMessageBody(value: string) {
+  return value
+    .split(/\r?\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}

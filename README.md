@@ -1,15 +1,24 @@
 # Orgis
 
-Orgis is a personal inbox triage app for fragmented communication. It is scoped to a few narrow things:
+Orgis is a local-first inbox triage app for fragmented communication.
 
-1. Import pasted text or uploaded text/JSON/CSV files.
-2. Show a unified inbox.
-3. Generate a concise AI summary for each message or thread.
-4. Classify each item as `Act now`, `Review soon`, or `For later`.
-5. Surface a simple digest at the top.
-6. Optionally sync Beeper messages into MySQL for downstream processing.
+## What it does
 
-It does not include chat, replies, tasks, calendars, team workspaces, auth, Supabase, notifications, or background jobs.
+- Imports pasted text or uploaded `.txt`, `.json`, and `.csv` files.
+- Shows a unified inbox on `/`.
+- Generates concise summaries and priorities for inbox items.
+- Supports Slack, WhatsApp, Telegram, Discord, Email, and other text-based imports.
+- Can sync Beeper messages into MySQL, triage them with OpenAI, and store `red`, `yellow`, or `green` labels.
+- Lets you reply to Beeper chats and delete stored Beeper rows from the dashboard.
+
+## What it does not do
+
+- No calendar
+- No task management
+- No team workspace
+- No auth
+- No Supabase
+- No websocket push layer
 
 ## Stack
 
@@ -19,46 +28,46 @@ It does not include chat, replies, tasks, calendars, team workspaces, auth, Supa
 - shadcn-style UI components
 - Vercel AI SDK
 - Zod structured output
-- mysql2
+- MySQL via `mysql2`
 
 ## Setup
 
-1. Install dependencies:
+1. Install dependencies.
 
 ```bash
 npm install
 ```
 
-2. Create your local env file:
+2. Create your local env file.
 
 ```bash
 Copy-Item .env.example .env.local
 ```
 
-3. Add your OpenAI key:
+3. Add your OpenAI key.
 
 ```bash
 OPENAI_API_KEY=your_key_here
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-If `OPENAI_API_KEY` is not set, the app falls back to local deterministic heuristics so you can still run the demo.
+If `OPENAI_API_KEY` is missing, the app falls back to local heuristics for triage.
 
-4. If you want Beeper syncing, add your Beeper and MySQL settings:
+4. If you want Beeper sync, add the Beeper and MySQL settings.
 
 ```bash
 BEEPER_TOKEN=your_beeper_token
 BEEPER_BASE_URL=http://localhost:23373/v1
-MYSQL_URL=mysql://root:password@localhost:3306/orgis
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=orgis
 ```
 
-You can also use the split MySQL fields shown in `.env.example` instead of `MYSQL_URL`.
+`MYSQL_URL` is optional. You can use it instead of the split MySQL fields if you prefer.
 
-5. Create the MySQL table:
-
-Run the SQL in `sql/beeper-schema.sql` against your MySQL database using your preferred client or CLI.
-
-6. Start the app:
+5. Start the app.
 
 ```bash
 npm run dev
@@ -66,63 +75,53 @@ npm run dev
 
 Open `http://localhost:3000`.
 
-## Supported imports
-
-- Pasted raw text
-- Uploaded `.txt`, `.json`, and `.csv` files
-- Built-in sample imports for:
-  - WhatsApp
-  - Telegram
-  - Discord
-- Email
-
 ## Beeper sync
 
-The project includes a Beeper ingestion path for messages you want to store in MySQL:
+Orgis includes a Beeper ingestion path:
 
-- `POST /api/beeper/sync` polls only the latest message in each chat and inserts it into `beeper_messages` if it has not been seen before.
-- `scripts/beeper-listener.ts` runs the same sync loop continuously for local or server-side use.
-- Incoming messages are stored with metadata, the raw payload, sender info, and timestamps.
-- Start the listener with `npm run beeper:listen`.
-- The Beeper tables are created automatically the first time the sync runs.
-- Each stored message is automatically sent to OpenAI and labeled `red`, `yellow`, or `green`.
-- The basic live board is available at `/beeper`.
+- `POST /api/beeper/sync` polls Beeper and stores only unseen recent messages.
+- `scripts/beeper-listener.ts` runs the same sync loop continuously.
+- New messages are saved to MySQL, then triaged into `red`, `yellow`, or `green`.
+- Burst typing is grouped so rapid multi-line sends can be triaged together.
+- Self-sent messages are skipped by default unless `BEEPER_STORE_SELF_MESSAGES=true`.
 
-By default, self-sent messages are skipped. Set `BEEPER_STORE_SELF_MESSAGES=true` if you want those stored too.
-Because this is polling-based, it watches for the newest message rather than backfilling full chat history.
+Run the listener with:
 
-## AI behavior
+```bash
+npm run beeper:listen
+```
 
-The `/api/triage` route uses the Vercel AI SDK with structured output and Zod. Each item returns:
+The Beeper tables are created automatically the first time the sync runs.
 
-- `summary`
-- `priority`
-- `reason`
+## Main UI
 
-The prompt is conservative by design:
+The main dashboard is the homepage at `/`.
 
-- It does not invent deadlines, tasks, or events.
-- It keeps summaries concise.
-- It classifies vague content conservatively.
-- It returns structured JSON only.
+It includes:
+
+- inbox digest
+- priority filters
+- source filters
+- read/unread state
+- Beeper reply and delete actions in the message drawer
 
 ## Project structure
 
-- `app/` - route handlers, layout, and the dashboard page
-- `components/` - UI primitives and Orgis dashboard components
-- `data/` - seeded inbox data and sample imports
-- `lib/` - parsing, triage, and display helpers
+- `app/` - routes and API handlers
+- `components/` - UI components
+- `data/` - sample inbox data
+- `lib/` - parsing, triage, Beeper sync, and MySQL helpers
 - `types/` - shared TypeScript types
 
-## Run for production
+## Production
 
 ```bash
 npm run build
 npm start
 ```
 
-## Vercel
+## Notes
 
-This app is ready to deploy on Vercel as-is. Add `OPENAI_API_KEY` in your Vercel project settings if you want live AI summarization and classification.
-
-If you enable Beeper syncing in production, run the listener script in a long-lived Node process or call the sync endpoint from a scheduler. The polling loop is not meant to live inside a serverless function.
+- `/origins` redirects to `/`.
+- The old `/beeper` page was removed; the Beeper data now lives inside the main dashboard flow.
+- If you run Beeper sync in production, keep the listener in a long-lived Node process or scheduler.

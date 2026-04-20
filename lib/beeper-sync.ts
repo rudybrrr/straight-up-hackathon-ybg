@@ -106,7 +106,8 @@ function normalizeBurstText(text: string) {
     .split(/\r?\n+/)
     .map((line) => line.trim())
     .filter(Boolean)
-    .join("\n");
+    .join("\n")
+    .trim();
 }
 
 function toSqlDateTime(timestamp: string) {
@@ -248,10 +249,13 @@ function collectNewMessages(messages: BeeperMessage[], lastMessageId: string | n
 }
 
 function groupBurstMessages(messages: BeeperBurstMessage[], gapMs = 15000) {
+  const orderedMessages = [...messages].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
   const bursts: BeeperBurstMessage[][] = [];
   let currentBurst: BeeperBurstMessage[] = [];
 
-  for (const message of messages) {
+  for (const message of orderedMessages) {
     if (currentBurst.length === 0) {
       currentBurst = [message];
       continue;
@@ -420,7 +424,7 @@ export async function syncBeeperMessages() {
       `/chats/${encodeURIComponent(chat.id)}/messages?limit=10`
     );
 
-    const apiMessages = messagesResponse.items ?? [];
+  const apiMessages = messagesResponse.items ?? [];
     const newMessages = collectNewMessages(apiMessages, chatState?.lastMessageId ?? null)
       .map((message) => messageFromApi(chat, message))
       .filter((message): message is BeeperBurstMessage => message !== null);
