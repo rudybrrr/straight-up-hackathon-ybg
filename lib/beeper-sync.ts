@@ -33,6 +33,14 @@ type BeeperChatState = {
   lastMessageTimestamp: string | null;
 };
 
+type BeeperBurstMessage = {
+  id: string;
+  timestamp: string;
+  senderName: string;
+  isSender: boolean;
+  text: string;
+};
+
 export type SyncedBeeperMessage = {
   beeperMessageId: string;
   beeperChatId: string;
@@ -91,6 +99,14 @@ function inferSourcePlatform(accountId: string) {
 function pickMessageText(message: BeeperMessage) {
   const text = message.text ?? message.body ?? message.content ?? message.rawContent ?? "";
   return String(text).trim();
+}
+
+function normalizeBurstText(text: string) {
+  return text
+    .split(/\r?\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join("\n");
 }
 
 function toSqlDateTime(timestamp: string) {
@@ -159,6 +175,107 @@ function buildStoredMessage(chat: BeeperChat, message: BeeperMessage): SyncedBee
     isSender: Boolean(message.isSender),
     payloadJson: safeJson({ chat, message })
   };
+}
+
+function buildBurstStoredMessage(
+  chat: BeeperChat,
+  burst: BeeperBurstMessage[]
+): SyncedBeeperMessage | null {
+  const first = burst[0];
+  const last = burst[burst.length - 1];
+
+  if (!first || !last) {
+    return null;
+  }
+
+  const accountId = String(chat.accountID ?? chat.accountId ?? "").trim();
+  const chatName = String(chat.name ?? "Private Chat").trim();
+  const senderName = String(first.senderName ?? "Someone").trim();
+  const rawContent = normalizeBurstText(
+    burst
+      .map((entry) => entry.text)
+      .filter(Boolean)
+      .join("\n")
+  );
+
+  if (!first.id || !accountId || !first.timestamp) {
+    return null;
+  }
+
+  return {
+    beeperMessageId: String(last.id),
+    beeperChatId: String(chat.id),
+    accountId,
+    sourcePlatform: inferSourcePlatform(accountId),
+    chatName: chatName || "Private Chat",
+    senderName: senderName || "Someone",
+    messageTimestamp: toSqlDateTime(last.timestamp),
+    rawContent: rawContent || "[Media/Attachment]",
+    isSender: Boolean(first.isSender),
+    payloadJson: safeJson({
+      chat,
+      burst
+    })
+  };
+}
+
+function messageFromApi(chat: BeeperChat, message: BeeperMessage): BeeperBurstMessage | null {
+  const rawContent = pickMessageText(message);
+  const timestamp = String(message.timestamp ?? "").trim();
+  const senderName = String(message.senderName ?? "Someone").trim();
+
+  if (!message.id || !timestamp) {
+    return null;
+  }
+
+  return {
+    id: String(message.id),
+    timestamp,
+    senderName: senderName || "Someone",
+    isSender: Boolean(message.isSender),
+    text: rawContent || "[Media/Attachment]"
+  };
+}
+
+function collectNewMessages(messages: BeeperMessage[], lastMessageId: string | null) {
+  const newestFirst = [...messages];
+  const lastSeenIndex = lastMessageId
+    ? newestFirst.findIndex((message) => String(message.id) === lastMessageId)
+    : -1;
+
+  const unseenNewestFirst = lastSeenIndex >= 0 ? newestFirst.slice(0, lastSeenIndex) : newestFirst;
+  return unseenNewestFirst.reverse();
+}
+
+function groupBurstMessages(messages: BeeperBurstMessage[], gapMs = 15000) {
+  const bursts: BeeperBurstMessage[][] = [];
+  let currentBurst: BeeperBurstMessage[] = [];
+
+  for (const message of messages) {
+    if (currentBurst.length === 0) {
+      currentBurst = [message];
+      continue;
+    }
+
+    const previous = currentBurst[currentBurst.length - 1];
+    const previousTime = new Date(previous.timestamp).getTime();
+    const currentTime = new Date(message.timestamp).getTime();
+    const sameSender = previous.senderName === message.senderName && previous.isSender === message.isSender;
+    const closeInTime = Math.abs(currentTime - previousTime) <= gapMs;
+
+    if (sameSender && closeInTime) {
+      currentBurst.push(message);
+    } else {
+      bursts.push(currentBurst);
+      currentBurst = [message];
+    }
+  }
+
+  if (currentBurst.length > 0) {
+    bursts.push(currentBurst);
+  }
+
+  return bursts;
 }
 
 async function storeMessage(message: SyncedBeeperMessage) {
@@ -300,60 +417,69 @@ export async function syncBeeperMessages() {
     const messagesResponse = await beeperFetch<BeeperListResponse<BeeperMessage>>(
       config.baseUrl,
       config.token,
-      `/chats/${encodeURIComponent(chat.id)}/messages?limit=1`
+      `/chats/${encodeURIComponent(chat.id)}/messages?limit=10`
     );
 
-    const latestMessage = messagesResponse.items?.[0];
-    messagesFetched += latestMessage ? 1 : 0;
+    const apiMessages = messagesResponse.items ?? [];
+    const newMessages = collectNewMessages(apiMessages, chatState?.lastMessageId ?? null)
+      .map((message) => messageFromApi(chat, message))
+      .filter((message): message is BeeperBurstMessage => message !== null);
 
-    if (!latestMessage || !isNewerMessage(latestMessage, chatState)) {
+    messagesFetched += newMessages.length;
+
+    if (newMessages.length === 0) {
       continue;
     }
 
-    const storedMessage = buildStoredMessage(chat, latestMessage);
-    if (!storedMessage) {
-      messagesSkipped += 1;
-      continue;
-    }
+    const bursts = groupBurstMessages(newMessages);
 
-    if (storedMessage.isSender && !config.storeSelfMessages) {
-      messagesSkipped += 1;
+    for (const burst of bursts) {
+      const storedMessage = buildBurstStoredMessage(chat, burst);
+      if (!storedMessage) {
+        messagesSkipped += 1;
+        continue;
+      }
+
+      const shouldStore = config.storeSelfMessages || !storedMessage.isSender;
+      if (!shouldStore) {
+        messagesSkipped += 1;
+        await upsertChatState({
+          beeperChatId: chat.id,
+          lastMessageId: storedMessage.beeperMessageId,
+          lastMessageTimestamp: storedMessage.messageTimestamp
+        });
+        continue;
+      }
+
+      const affectedRows = await storeMessage(storedMessage);
+      if (affectedRows > 0) {
+        messagesStored += 1;
+      } else {
+        messagesSkipped += 1;
+      }
+
+      const triage = await triageBeeperMessage({
+        senderName: storedMessage.senderName,
+        chatName: storedMessage.chatName,
+        sourcePlatform: storedMessage.sourcePlatform,
+        rawContent: storedMessage.rawContent,
+        timestamp: storedMessage.messageTimestamp
+      });
+
+      await upsertMessageTriage({
+        beeperMessageId: storedMessage.beeperMessageId,
+        priorityColor: triage.priorityColor,
+        summary: triage.summary,
+        reason: triage.reason,
+        modelName: process.env.OPENAI_API_KEY ? process.env.OPENAI_MODEL || "gpt-4.1-mini" : null
+      });
+
       await upsertChatState({
         beeperChatId: chat.id,
         lastMessageId: storedMessage.beeperMessageId,
         lastMessageTimestamp: storedMessage.messageTimestamp
       });
-      continue;
     }
-
-    const affectedRows = await storeMessage(storedMessage);
-    if (affectedRows > 0) {
-      messagesStored += 1;
-    } else {
-      messagesSkipped += 1;
-    }
-
-    const triage = await triageBeeperMessage({
-      senderName: storedMessage.senderName,
-      chatName: storedMessage.chatName,
-      sourcePlatform: storedMessage.sourcePlatform,
-      rawContent: storedMessage.rawContent,
-      timestamp: storedMessage.messageTimestamp
-    });
-
-    await upsertMessageTriage({
-      beeperMessageId: storedMessage.beeperMessageId,
-      priorityColor: triage.priorityColor,
-      summary: triage.summary,
-      reason: triage.reason,
-      modelName: process.env.OPENAI_API_KEY ? process.env.OPENAI_MODEL || "gpt-4.1-mini" : null
-    });
-
-    await upsertChatState({
-      beeperChatId: chat.id,
-      lastMessageId: storedMessage.beeperMessageId,
-      lastMessageTimestamp: storedMessage.messageTimestamp
-    });
   }
 
   return {

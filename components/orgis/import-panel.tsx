@@ -1,11 +1,11 @@
+import { FileText, Loader2, RotateCcw, Upload } from "lucide-react";
+import { sampleImports } from "@/data/sample-imports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { SampleImportKey } from "@/data/sample-imports";
-import { sampleImports } from "@/data/sample-imports";
 import { cn } from "@/lib/utils";
-import { FileText, Loader2, RotateCcw, Upload } from "lucide-react";
+import type { SampleImportKey } from "@/data/sample-imports";
 
 export function ImportPanel({
   rawInput,
@@ -34,17 +34,19 @@ export function ImportPanel({
   sampleCount: number;
   sampleDescription: string;
 }) {
-  const selectedSample = sampleImports.find((sample) => sample.key === selectedSampleKey) ?? sampleImports[0];
+  const selectedSample =
+    sampleImports.find((sample) => sample.key === selectedSampleKey) ?? sampleImports[0];
 
   return (
     <Card className="border-slate-200/80 bg-white/90">
       <CardHeader className="space-y-2">
         <CardTitle className="flex items-center gap-2">
           <Upload className="h-4 w-4 text-slate-500" />
-          Import inbox content
+          Bring in chat exports
         </CardTitle>
         <CardDescription>
-          Paste raw messages, upload a file, or load one of the built-in platform samples. Then press Process.
+          Paste copied threads, upload a raw export, or load a built-in sample to compile one
+          shared queue.
         </CardDescription>
       </CardHeader>
 
@@ -72,7 +74,12 @@ export function ImportPanel({
                 Load sample
               </Button>
             </div>
-            <p className="text-xs leading-5 text-slate-500">{sampleDescription}</p>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span>{sampleDescription}</span>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium uppercase tracking-[0.16em] text-slate-600">
+                {selectedSample.format}
+              </span>
+            </div>
           </label>
 
           <label className="space-y-2">
@@ -81,20 +88,22 @@ export function ImportPanel({
               value={rawInput}
               onChange={(event) => onRawInputChange(event.target.value)}
               disabled={isProcessing}
-              placeholder={`Source: ${selectedSample.source}
-Sender: Name
-Chat: Thread name
-Timestamp: 2026-04-18 09:12
+              placeholder={`Source: WhatsApp
+Sender: Priya Nair
+Chat: Client launch room
+Timestamp: 2026-04-18 09:12 AM
 Content:
-Paste one or more messages here, separated by blank lines.
+The client moved the review earlier. Can you send the final deck before 11:30?
 
 ---
 
-Source: Email
-From: Billing
-Subject: Invoice available
-Body:
-Short updates or multi-message threads work well here.`}
+App: Slack
+Sender: Ari Chen
+Channel: #launch-ops
+Timestamp: 2026-04-18 10:14 AM
+Messages: 7
+Content:
+Legal approved the copy. Please pin the launch note and post it at 12:00.`}
               className="min-h-72"
             />
           </label>
@@ -125,14 +134,14 @@ Short updates or multi-message threads work well here.`}
               disabled={isProcessing || (rawInput.trim().length === 0 && !fileName)}
             >
               {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-              Process
+              Compile queue
             </Button>
             <Button type="button" variant="outline" onClick={onClear} disabled={isProcessing}>
               <RotateCcw className="h-4 w-4" />
-              Clear
+              Reset import
             </Button>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-              {sampleCount} built-in sample{sampleCount === 1 ? "" : "s"} available
+              {sampleCount} built-in sample{sampleCount === 1 ? "" : "s"} ready to demo
             </div>
           </div>
         </div>

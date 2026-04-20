@@ -11,7 +11,7 @@ export const triageRequestSchema = z.object({
   items: z.array(
     z.object({
       id: z.string().min(1),
-      source: z.enum(["WhatsApp", "Telegram", "Discord", "Email", "Other"]),
+      source: z.enum(["WhatsApp", "Telegram", "Discord", "Slack", "Email", "Other"]),
       sender: z.string().min(1),
       chatOrThreadName: z.string().min(1),
       timestamp: z.string().min(1),

@@ -11,6 +11,17 @@ import {
 } from "@/lib/inbox";
 import type { InboxItem } from "@/types/orgis";
 
+function priorityAccentClass(priority: InboxItem["priority"]) {
+  switch (priority) {
+    case "act_now":
+      return "bg-rose-500";
+    case "review_soon":
+      return "bg-amber-500";
+    case "for_later":
+      return "bg-slate-400";
+  }
+}
+
 export function InboxCard({
   item,
   selected,
@@ -33,14 +44,18 @@ export function InboxCard({
     >
       <Card
         className={cn(
-          "group border-slate-200/80 bg-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-soft",
+          "relative overflow-hidden border-slate-200/80 bg-white/95 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-soft",
           selected && "border-slate-900 ring-1 ring-slate-900"
         )}
       >
-        <div className="p-5">
+        <div className={cn("absolute inset-y-4 left-4 w-1 rounded-full", priorityAccentClass(item.priority))} />
+
+        <div className="p-5 pl-8">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className={cn("border", sourceBadgeClass(item.source))}>{sourceLabel(item.source)}</Badge>
+              <Badge className={cn("border", sourceBadgeClass(item.source))}>
+                {sourceLabel(item.source)}
+              </Badge>
               <Badge className={cn("border", priorityBadgeClass(item.priority))}>
                 {priorityLabel(item.priority)}
               </Badge>
@@ -52,31 +67,24 @@ export function InboxCard({
             <div className="text-xs text-slate-500">{formatTimestamp(item.timestamp)}</div>
           </div>
 
-          <div className="mt-4 flex items-start justify-between gap-4">
-            <div className="min-w-0 space-y-1">
-              <p className="truncate text-base font-semibold text-slate-950">
-                {item.sender}
-                <span className="font-normal text-slate-500"> | {item.chatOrThreadName}</span>
-              </p>
-              <p
-                className="text-sm leading-6 text-slate-600"
-                style={{
-                  display: "-webkit-box",
-                  WebkitBoxOrient: "vertical",
-                  WebkitLineClamp: 2,
-                  overflow: "hidden"
-                }}
-              >
-                {item.summary}
-              </p>
-            </div>
+          <div className="mt-4 space-y-2">
+            <p className="text-base font-semibold text-slate-950">
+              {item.sender}
+              <span className="font-normal text-slate-500"> in {item.chatOrThreadName}</span>
+            </p>
+            <p className="text-sm leading-6 text-slate-700">{item.summary}</p>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-              {previewText(item.rawContent, 140)}
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-6 text-slate-600">
+              {previewText(item.rawContent, 160)}
             </div>
-            <p className="text-xs leading-5 text-slate-500">{item.reason}</p>
+            <div className="rounded-[1.5rem] border border-slate-200/80 bg-white px-3 py-3 text-xs leading-6 text-slate-500">
+              <span className="font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Why it ranks here
+              </span>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.reason}</p>
+            </div>
           </div>
         </div>
       </Card>

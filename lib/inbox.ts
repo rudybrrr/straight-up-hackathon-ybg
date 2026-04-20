@@ -40,6 +40,23 @@ export function getDigestCounts(items: InboxItem[]) {
   );
 }
 
+export function getSourceCounts(items: InboxItem[]) {
+  return items.reduce<Record<SourcePlatform, number>>(
+    (acc, item) => {
+      acc[item.source] += 1;
+      return acc;
+    },
+    {
+      WhatsApp: 0,
+      Telegram: 0,
+      Discord: 0,
+      Slack: 0,
+      Email: 0,
+      Other: 0
+    }
+  );
+}
+
 export function priorityLabel(priority: Priority) {
   switch (priority) {
     case "act_now":
@@ -63,6 +80,8 @@ export function sourceBadgeClass(source: SourcePlatform) {
       return "border-sky-200 bg-sky-50 text-sky-700";
     case "Discord":
       return "border-indigo-200 bg-indigo-50 text-indigo-700";
+    case "Slack":
+      return "border-orange-200 bg-orange-50 text-orange-700";
     case "Email":
       return "border-zinc-200 bg-zinc-100 text-zinc-700";
     default:
