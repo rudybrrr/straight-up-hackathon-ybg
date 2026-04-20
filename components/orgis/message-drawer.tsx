@@ -19,10 +19,18 @@ import type { InboxItem } from "@/types/orgis";
 
 export function MessageDrawer({
   item,
-  onClose
+  onClose,
+  isRead,
+  onMarkRead,
+  onMarkUnread,
+  onReply
 }: {
   item: InboxItem | null;
   onClose: () => void;
+  isRead: boolean;
+  onMarkRead: () => void;
+  onMarkUnread: () => void;
+  onReply: () => void;
 }) {
   const [mounted, setMounted] = useState(false);
   const titleId = useId();
@@ -149,6 +157,25 @@ export function MessageDrawer({
                   </p>
                 </div>
               </Card>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant={isRead ? "outline" : "default"}
+                className="rounded-full"
+                onClick={isRead ? onMarkUnread : onMarkRead}
+              >
+                {isRead ? "Mark unread" : "Mark read"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={onReply}
+              >
+                Reply
+              </Button>
             </div>
 
             {item.isThread ? (

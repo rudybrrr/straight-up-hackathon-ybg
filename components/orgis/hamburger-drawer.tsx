@@ -2,16 +2,22 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { User, X } from "lucide-react";
+import { Link2, ShieldCheck, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatTimestamp, sourceBadgeClass, sourceLabel } from "@/lib/inbox";
+import type { SourcePlatform } from "@/types/orgis";
 
 export function HamburgerDrawer({
   open,
-  onClose
+  onClose,
+  connectedApps,
+  lastUpdatedAt
 }: {
   open: boolean;
   onClose: () => void;
+  connectedApps: Array<{ source: SourcePlatform; count: number }>;
+  lastUpdatedAt: string | null;
 }) {
   const [mounted, setMounted] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -118,6 +124,9 @@ export function HamburgerDrawer({
                 <h2 id={titleId} className="mt-2 text-lg font-semibold tracking-tight text-slate-950">
                   Account
                 </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {lastUpdatedAt ? `Updated ${formatTimestamp(lastUpdatedAt)}` : "Live feed"}
+                </p>
               </div>
 
               <Button
@@ -135,34 +144,69 @@ export function HamburgerDrawer({
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 rounded-3xl border border-slate-200 bg-white px-4 py-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">
                   <User className="h-4 w-4" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-slate-950">Signed out</p>
-                  <p className="truncate text-sm text-slate-600">Account settings (placeholder)</p>
+                  <p className="truncate text-sm text-slate-600">Account (placeholder)</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Connected Apps
-                </p>
-                <p className="text-sm leading-6 text-slate-600">
-                  Placeholder: manage WhatsApp / Telegram / Discord / Slack connections here.
-                </p>
-              </div>
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Link2 className="h-4 w-4 text-slate-500" />
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Connected Apps
+                  </p>
+                </div>
 
-              <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Preferences
-                </p>
-                <p className="text-sm leading-6 text-slate-600">
-                  Placeholder: notifications, triage rules, and priority defaults.
-                </p>
-              </div>
+                {connectedApps.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                    No apps detected yet. When messages arrive, apps will appear here automatically.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {connectedApps.map((app) => (
+                      <div
+                        key={app.source}
+                        className="flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "h-3 w-3 rounded-full border",
+                              sourceBadgeClass(app.source),
+                              "shrink-0"
+                            )}
+                            aria-hidden="true"
+                          />
+                          <span className="text-sm font-medium text-slate-900">
+                            {sourceLabel(app.source)}
+                          </span>
+                        </div>
+                        <span className="text-sm text-slate-600">
+                          {app.count} message{app.count === 1 ? "" : "s"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-slate-500" />
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    Preferences
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                  Notifications, triage rules, and priority defaults (placeholder).
+                </div>
+              </section>
             </div>
           </div>
         </div>

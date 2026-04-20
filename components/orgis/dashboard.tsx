@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Inbox, Menu } from "lucide-react";
-import { seededInbox } from "@/data/seeded-inbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,29 @@ import {
   sourceLabel
 } from "@/lib/inbox";
 import { cn } from "@/lib/utils";
-import type { InboxItem, PriorityFilter, SourcePlatform } from "@/types/orgis";
+import type { InboxItem, Priority, PriorityFilter, SourcePlatform } from "@/types/orgis";
+
+type BeeperPriorityColor = "red" | "yellow" | "green";
+
+type BeeperBoardMessage = {
+  beeperMessageId: string;
+  senderName: string;
+  chatName: string;
+  sourcePlatform: string;
+  rawContent: string;
+  messageTimestamp: string;
+  priorityColor: BeeperPriorityColor;
+  summary: string;
+  reason: string;
+  triagedAt: string | null;
+};
+
+type BeeperBoardGroup = {
+  color: BeeperPriorityColor;
+  title: string;
+  description: string;
+  messages: BeeperBoardMessage[];
+};
 
 const filterOptions: Array<{ key: PriorityFilter; label: string }> = [
   { key: "all", label: "All" },
@@ -59,12 +80,61 @@ function sourceMonogram(source: SourcePlatform) {
   }
 }
 
+function toOrgisSource(platform: string): SourcePlatform {
+  const normalized = platform.trim().toLowerCase();
+  if (normalized.includes("whatsapp")) return "WhatsApp";
+  if (normalized.includes("telegram")) return "Telegram";
+  if (normalized.includes("discord")) return "Discord";
+  if (normalized.includes("slack")) return "Slack";
+  if (normalized.includes("email")) return "Email";
+  return "Other";
+}
+
+function toOrgisPriority(color: BeeperPriorityColor): Priority {
+  switch (color) {
+    case "red":
+      return "act_now";
+    case "yellow":
+      return "review_soon";
+    case "green":
+      return "for_later";
+  }
+}
+
+function toInboxItem(message: BeeperBoardMessage): InboxItem {
+  return {
+    id: `beeper-${message.beeperMessageId}`,
+    source: toOrgisSource(message.sourcePlatform),
+    sender: message.senderName || "Someone",
+    chatOrThreadName: message.chatName || "Private chat",
+    timestamp: message.messageTimestamp,
+    rawContent: message.rawContent,
+    summary: message.summary || "Incoming message.",
+    priority: toOrgisPriority(message.priorityColor),
+    reason: message.reason || "No reason stored yet.",
+    isThread: false
+  };
+}
+
+type BeeperBoardPayload = {
+  groups: BeeperBoardGroup[];
+  total: number;
+  refreshedAt: string;
+};
+
+type ReadFilter = "all" | "unread" | "read";
+
 export function Dashboard() {
-  const [items] = useState<InboxItem[]>(() => sortInboxItems(seededInbox));
+  const [items, setItems] = useState<InboxItem[]>([]);
   const [filter, setFilter] = useState<PriorityFilter>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourcePlatform>("all");
+  const [readFilter, setReadFilter] = useState<ReadFilter>("all");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
 
   const counts = getDigestCounts(items);
   const sourceCounts = getSourceCounts(items);
@@ -72,9 +142,68 @@ export function Dashboard() {
     ([, count]) => count > 0
   );
 
+  function isRead(id: string) {
+    return readIds.has(id);
+  }
+
+  function markRead(id: string) {
+    setReadIds((current) => {
+      if (current.has(id)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(id);
+      return next;
+    });
+  }
+
+  function markUnread(id: string) {
+    setReadIds((current) => {
+      if (!current.has(id)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("orgis.readIds");
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      setReadIds(new Set(parsed.filter((value) => typeof value === "string")));
+    } catch {
+      // Ignore malformed local storage.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("orgis.readIds", JSON.stringify(Array.from(readIds)));
+    } catch {
+      // Ignore storage failures (private mode, quota, etc).
+    }
+  }, [readIds]);
+
   const filteredBySource =
     sourceFilter === "all" ? items : items.filter((item) => item.source === sourceFilter);
-  const visibleItems = sortInboxItems(filterInboxItems(filteredBySource, filter));
+  const filteredByPriority = filterInboxItems(filteredBySource, filter);
+  const baseItems = sortInboxItems(filteredByPriority);
+  const visibleItems =
+    readFilter === "all"
+      ? baseItems
+      : baseItems.filter((item) => (readFilter === "read" ? isRead(item.id) : !isRead(item.id)));
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? null;
 
   useEffect(() => {
@@ -83,12 +212,64 @@ export function Dashboard() {
     }
   }, [selectedItem, selectedItemId]);
 
+  useEffect(() => {
+    if (!selectedItemId) {
+      return;
+    }
+
+    markRead(selectedItemId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedItemId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshFromDatabase() {
+      setSyncing(true);
+
+      try {
+        const response = await fetch("/api/beeper/board", {
+          cache: "no-store"
+        });
+
+        const payload = (await response.json()) as BeeperBoardPayload & { error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error ?? `Board refresh failed: ${response.status}`);
+        }
+
+        const flattened = payload.groups.flatMap((group) => group.messages.map(toInboxItem));
+
+        if (!cancelled) {
+          setItems(sortInboxItems(flattened));
+          setRefreshedAt(payload.refreshedAt ?? null);
+          setSyncError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setSyncError(err instanceof Error ? err.message : "Database refresh failed.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSyncing(false);
+        }
+      }
+    }
+
+    refreshFromDatabase();
+    const timer = window.setInterval(refreshFromDatabase, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const emptyState =
     items.length === 0 ? (
       <EmptyState
         icon={<Inbox className="h-5 w-5" />}
         title="No messages in Orgis yet"
-        description="Connect chat apps to start compiling your priority list."
+        description="No database messages yet. Run a sync to ingest Beeper chats."
       />
     ) : visibleItems.length === 0 ? (
       <EmptyState
@@ -99,9 +280,23 @@ export function Dashboard() {
         onPrimaryAction={() => {
           setFilter("all");
           setSourceFilter("all");
+          setReadFilter("all");
         }}
       />
     ) : null;
+
+  const baseReadCount = baseItems.reduce((sum, item) => sum + (isRead(item.id) ? 1 : 0), 0);
+  const baseUnreadCount = baseItems.length - baseReadCount;
+
+  function handleMarkAllRead() {
+    setReadIds((current) => {
+      const next = new Set(current);
+      for (const item of baseItems) {
+        next.add(item.id);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="relative min-h-screen">
@@ -124,6 +319,21 @@ export function Dashboard() {
               <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-slate-700">
                 {activeSources.length} apps
               </Badge>
+              {refreshedAt ? (
+                <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-slate-700">
+                  Updated {formatTimestamp(refreshedAt)}
+                </Badge>
+              ) : null}
+              <Badge
+                className={cn(
+                  "border px-3 py-1",
+                  syncing
+                    ? "border-sky-200 bg-sky-50 text-sky-700"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                )}
+              >
+                {syncing ? "Refreshing…" : "Live"}
+              </Badge>
               <Button
                 type="button"
                 variant="outline"
@@ -141,6 +351,12 @@ export function Dashboard() {
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
         <div className="space-y-6">
+          {syncError ? (
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+              Live data unavailable: {syncError}
+            </div>
+          ) : null}
+
           <Card className="border-slate-200/80 bg-white/90">
             <CardContent className="p-5">
               <div className="grid gap-3 sm:grid-cols-3">
@@ -170,9 +386,21 @@ export function Dashboard() {
                     <CardTitle>Priority list</CardTitle>
                     <CardDescription>Urgency first, then most recent activity.</CardDescription>
                   </div>
-                  <Badge className="w-fit border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">
-                    {visibleItems.length} shown
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge className="w-fit border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">
+                      {visibleItems.length} shown
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={handleMarkAllRead}
+                      disabled={baseItems.length === 0 || baseUnreadCount === 0}
+                    >
+                      Read all
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -220,6 +448,43 @@ export function Dashboard() {
                       );
                     })}
                 </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {(
+                    [
+                      { key: "all", label: "All", countLabel: `${baseItems.length}` },
+                      { key: "unread", label: "Unread", countLabel: `${baseUnreadCount}` },
+                      { key: "read", label: "Read", countLabel: `${baseReadCount}` }
+                    ] as const
+                  ).map((option) => {
+                    const active = readFilter === option.key;
+
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        onClick={() => setReadFilter(option.key)}
+                        className={cn(
+                          "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                          "inline-flex items-center gap-2",
+                          active
+                            ? "border-slate-950 bg-slate-950 text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        )}
+                      >
+                        {option.label}
+                        <span
+                          className={cn(
+                            "rounded-full px-2 py-0.5 text-xs",
+                            active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"
+                          )}
+                        >
+                          {option.countLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </CardHeader>
 
               <CardContent className="p-0">
@@ -237,6 +502,7 @@ export function Dashboard() {
                     <div className="divide-y divide-slate-100">
                       {visibleItems.map((item) => {
                         const selected = item.id === selectedItemId;
+                        const read = isRead(item.id);
 
                         return (
                           <button
@@ -271,10 +537,26 @@ export function Dashboard() {
                                 <Badge className={cn("border", priorityBadgeClass(item.priority))}>
                                   {priorityLabel(item.priority)}
                                 </Badge>
+                                {read ? (
+                                  <span className="text-xs font-medium text-slate-400">Read</span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700">
+                                    <span
+                                      className="h-1.5 w-1.5 rounded-full bg-sky-500"
+                                      aria-hidden="true"
+                                    />
+                                    New
+                                  </span>
+                                )}
                               </div>
 
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold text-slate-950">
+                                <p
+                                  className={cn(
+                                    "text-sm font-semibold",
+                                    read ? "text-slate-800" : "text-slate-950"
+                                  )}
+                                >
                                   {item.sender}
                                   <span className="font-normal text-slate-500">
                                     {" "}
@@ -303,8 +585,36 @@ export function Dashboard() {
         </main>
       </div>
 
-      <HamburgerDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
-      <MessageDrawer item={selectedItem} onClose={() => setSelectedItemId(null)} />
+      <HamburgerDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        connectedApps={activeSources.map(([source, count]) => ({
+          source,
+          count
+        }))}
+        lastUpdatedAt={refreshedAt}
+      />
+      <MessageDrawer
+        item={selectedItem}
+        onClose={() => setSelectedItemId(null)}
+        isRead={selectedItem ? isRead(selectedItem.id) : false}
+        onMarkRead={() => {
+          if (selectedItem) {
+            markRead(selectedItem.id);
+          }
+        }}
+        onMarkUnread={() => {
+          if (selectedItem) {
+            markUnread(selectedItem.id);
+          }
+        }}
+        onReply={() => {
+          if (selectedItem) {
+            markRead(selectedItem.id);
+          }
+          setSelectedItemId(null);
+        }}
+      />
     </div>
   );
 }
