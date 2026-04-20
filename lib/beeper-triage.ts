@@ -16,6 +16,8 @@ export type BeeperTriageInput = {
   sourcePlatform: string;
   rawContent: string;
   timestamp: string;
+  familyRedEnabled?: boolean;
+  businessRedEnabled?: boolean;
 };
 
 const urgentSignals = [
@@ -78,8 +80,56 @@ const lowPrioritySignals = [
 
 const uselessInfoSignals = [/^[\p{L}]{1,12}$/u];
 
+const familySignals = [
+  /\bmom\b/i,
+  /\bdad\b/i,
+  /\bmum\b/i,
+  /\bmommy\b/i,
+  /\bdaddy\b/i,
+  /\bsister\b/i,
+  /\bbrother\b/i,
+  /\bwife\b/i,
+  /\bhusband\b/i,
+  /\bgrandma\b/i,
+  /\bgrandpa\b/i,
+  /\bparent(?:s)?\b/i,
+  /\bfamily\b/i,
+  /\baunt\b/i,
+  /\buncle\b/i,
+  /\bson\b/i,
+  /\bdaughter\b/i,
+  /\bhome\b/i,
+  /\bhouse\b/i
+];
+
+const businessSignals = [
+  /\bboss\b/i,
+  /\bclient\b/i,
+  /\bcustomer\b/i,
+  /\bmeeting\b/i,
+  /\bproject\b/i,
+  /\binvoice\b/i,
+  /\bpayment\b/i,
+  /\bquote\b/i,
+  /\bcontract\b/i,
+  /\bdeadline\b/i,
+  /\breport\b/i,
+  /\bwork\b/i,
+  /\boffice\b/i,
+  /\bteam\b/i,
+  /\bjob\b/i,
+  /\bdeliver(?:able|y)?\b/i,
+  /\bfollow up\b/i,
+  /\bsales\b/i,
+  /\brevenue\b/i
+];
+
 function normalizeContent(rawContent: string) {
   return rawContent.replace(/\s+/g, " ").trim();
+}
+
+function normalizeContext(value: string) {
+  return normalizeContent(value).toLowerCase();
 }
 
 function shorten(text: string, maxLength: number) {
@@ -90,7 +140,40 @@ function shorten(text: string, maxLength: number) {
   return `${text.slice(0, maxLength - 3).trimEnd()}...`;
 }
 
+function isContextMatch(input: BeeperTriageInput, patterns: RegExp[]) {
+  const context = [input.senderName, input.chatName, input.rawContent].map(normalizeContext).join(" ");
+  return patterns.some((pattern) => pattern.test(context));
+}
+
+export function resolvePreferencePriority(input: BeeperTriageInput): {
+  priorityColor: BeeperTriageResult["priorityColor"] | null;
+  reason: string | null;
+} {
+  if (input.familyRedEnabled && isContextMatch(input, familySignals)) {
+    return { priorityColor: "red", reason: "Family mode is on, so this is treated as a red message." };
+  }
+
+  if (input.businessRedEnabled && isContextMatch(input, businessSignals)) {
+    return { priorityColor: "red", reason: "Business mode is on, so this is treated as a red message." };
+  }
+
+  return { priorityColor: null, reason: null };
+}
+
 function fallbackTriage(input: BeeperTriageInput): BeeperTriageResult {
+  const forced = resolvePreferencePriority(input);
+  if (forced.priorityColor) {
+    const cleaned = normalizeContent(input.rawContent);
+    const lead = cleaned.split(/(?<=[.!?])\s+/)[0] ?? cleaned;
+    const summary = shorten(lead.replace(/^(subject|body|message|content)\s*:\s*/i, ""), 180);
+
+    return {
+      priorityColor: forced.priorityColor,
+      summary: summary || "Incoming message.",
+      reason: forced.reason ?? "This message is being treated as red by preference."
+    };
+  }
+
   const cleaned = normalizeContent(input.rawContent);
   const lead = cleaned.split(/(?<=[.!?])\s+/)[0] ?? cleaned;
   const summary = shorten(lead.replace(/^(subject|body|message|content)\s*:\s*/i, ""), 180);
@@ -106,6 +189,12 @@ function fallbackTriage(input: BeeperTriageInput): BeeperTriageResult {
     priorityColor = "yellow";
   }
   if (urgentSignals.some((pattern) => pattern.test(cleaned))) {
+    priorityColor = "red";
+  }
+  if (input.familyRedEnabled && isContextMatch(input, familySignals)) {
+    priorityColor = "red";
+  }
+  if (input.businessRedEnabled && isContextMatch(input, businessSignals)) {
     priorityColor = "red";
   }
 
@@ -134,6 +223,12 @@ function buildPrompt(input: BeeperTriageInput) {
     "Mark red when the sender asks the receiver to perform a task such as send, review, confirm, fix, update, book, pay, reply, handle, or do something.",
     "Do not mark red just because the message contains profanity, insults, slurs, sexual content, or harassment unless there is also a clear practical task request or urgent action.",
     "If the message is an inappropriate request like asking for nudes, sexual favors, insults, or harassment, treat it as green unless it includes a real practical action request.",
+    input.familyRedEnabled
+      ? "Family always red mode is enabled. If the sender name, chat name, or message context clearly points to a family member or family chat, mark it red."
+      : "Family priority mode is disabled. Ignore family-based urgency hints.",
+    input.businessRedEnabled
+      ? "Business always red mode is enabled. If the sender name, chat name, or message context clearly points to business, work, client, or company communication, mark it red."
+      : "Business priority mode is disabled. Ignore business-based urgency hints.",
     "",
     "Message:",
     JSON.stringify(input, null, 2)
@@ -141,6 +236,19 @@ function buildPrompt(input: BeeperTriageInput) {
 }
 
 export async function triageBeeperMessage(input: BeeperTriageInput): Promise<BeeperTriageResult> {
+  const forced = resolvePreferencePriority(input);
+  if (forced.priorityColor) {
+    const cleaned = normalizeContent(input.rawContent);
+    const lead = cleaned.split(/(?<=[.!?])\s+/)[0] ?? cleaned;
+    const summary = shorten(lead.replace(/^(subject|body|message|content)\s*:\s*/i, ""), 180);
+
+    return {
+      priorityColor: forced.priorityColor,
+      summary: summary || "Incoming message.",
+      reason: forced.reason ?? "This message is being treated as red by preference."
+    };
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return fallbackTriage(input);
   }

@@ -1,5 +1,6 @@
 import { getMysqlPool } from "@/lib/mysql";
 import { ensureBeeperSchema } from "@/lib/beeper-schema";
+import { getBeeperTriagePreferences } from "@/lib/beeper-preferences";
 import { triageBeeperMessage } from "@/lib/beeper-triage";
 
 type BeeperChat = {
@@ -403,6 +404,7 @@ function isNewerMessage(current: { id: string }, state: BeeperChatState | null) 
 
 export async function syncBeeperMessages() {
   await ensureBeeperSchema();
+  const triagePreferences = await getBeeperTriagePreferences();
 
   const config = getBeeperConfig();
   const chatsResponse = await beeperFetch<BeeperListResponse<BeeperChat>>(
@@ -467,7 +469,9 @@ export async function syncBeeperMessages() {
         chatName: storedMessage.chatName,
         sourcePlatform: storedMessage.sourcePlatform,
         rawContent: storedMessage.rawContent,
-        timestamp: storedMessage.messageTimestamp
+        timestamp: storedMessage.messageTimestamp,
+        familyRedEnabled: triagePreferences.familyRedEnabled,
+        businessRedEnabled: triagePreferences.businessRedEnabled
       });
 
       await upsertMessageTriage({

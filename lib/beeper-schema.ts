@@ -40,6 +40,14 @@ const beeperMessageTriageSchema = `
   )
 `;
 
+const beeperPreferencesSchema = `
+  CREATE TABLE IF NOT EXISTS beeper_preferences (
+    preference_key VARCHAR(64) NOT NULL PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+  )
+`;
+
 let ensureSchemaPromise: Promise<void> | null = null;
 
 export function ensureBeeperSchema() {
@@ -49,6 +57,7 @@ export function ensureBeeperSchema() {
       await pool.execute(beeperMessagesSchema);
       await pool.execute(beeperChatStateSchema);
       await pool.execute(beeperMessageTriageSchema);
+      await pool.execute(beeperPreferencesSchema);
     })();
   }
 

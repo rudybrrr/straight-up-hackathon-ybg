@@ -15,7 +15,12 @@ export function HamburgerDrawer({
   lastUpdatedAt,
   notificationPermission,
   redAlertsEnabled,
-  onToggleRedAlerts
+  onToggleRedAlerts,
+  familyRedEnabled,
+  businessRedEnabled,
+  onToggleFamilyRed,
+  onToggleBusinessRed,
+  preferenceError
 }: {
   open: boolean;
   onClose: () => void;
@@ -24,6 +29,11 @@ export function HamburgerDrawer({
   notificationPermission: NotificationPermission;
   redAlertsEnabled: boolean;
   onToggleRedAlerts: () => void | Promise<void>;
+  familyRedEnabled: boolean;
+  businessRedEnabled: boolean;
+  onToggleFamilyRed: () => void | Promise<void>;
+  onToggleBusinessRed: () => void | Promise<void>;
+  preferenceError: string | null;
 }) {
   const [mounted, setMounted] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -220,6 +230,34 @@ export function HamburgerDrawer({
                     {redAlertsEnabled ? "Disable red alerts" : "Enable red alerts"}
                   </Button>
                 </div>
+
+                <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                  <p className="font-semibold text-slate-900">Family messages always red</p>
+                  <Button
+                    type="button"
+                    className="w-full rounded-2xl"
+                    variant={familyRedEnabled ? "secondary" : "default"}
+                    onClick={onToggleFamilyRed}
+                  >
+                    {familyRedEnabled ? "On" : "Off"}
+                  </Button>
+                </div>
+
+                <div className="space-y-3 rounded-3xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                  <p className="font-semibold text-slate-900">Business messages always red</p>
+                  <Button
+                    type="button"
+                    className="w-full rounded-2xl"
+                    variant={businessRedEnabled ? "secondary" : "default"}
+                    onClick={onToggleBusinessRed}
+                  >
+                    {businessRedEnabled ? "On" : "Off"}
+                  </Button>
+                </div>
+
+                {preferenceError ? (
+                  <p className="text-xs leading-5 text-rose-600">{preferenceError}</p>
+                ) : null}
               </section>
             </div>
           </div>

@@ -111,6 +111,11 @@ type BeeperBoardPayload = {
   refreshedAt: string;
 };
 
+type BeeperTriagePreferences = {
+  familyRedEnabled: boolean;
+  businessRedEnabled: boolean;
+};
+
 type ReadFilter = "all" | "unread" | "read";
 type ViewMode = "priority" | "new";
 
@@ -133,6 +138,11 @@ export function Dashboard() {
     () => (typeof window !== "undefined" && "Notification" in window ? Notification.permission : "default")
   );
   const [redAlertsEnabled, setRedAlertsEnabled] = useState<boolean>(false);
+  const [triagePreferences, setTriagePreferences] = useState<BeeperTriagePreferences>({
+    familyRedEnabled: false,
+    businessRedEnabled: false
+  });
+  const [preferenceError, setPreferenceError] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const seenRedIdsRef = useRef<Set<string>>(new Set());
   const initialBoardLoadedRef = useRef(false);
@@ -217,6 +227,80 @@ export function Dashboard() {
       // Ignore storage failures (private mode, quota, etc).
     }
   }, [redAlertsEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPreferences() {
+      try {
+        const response = await fetch("/api/beeper/preferences", {
+          cache: "no-store"
+        });
+
+        const payload = (await response.json()) as BeeperTriagePreferences & { error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error ?? `Preferences load failed: ${response.status}`);
+        }
+
+        if (!cancelled) {
+          setTriagePreferences({
+            familyRedEnabled: Boolean(payload.familyRedEnabled),
+            businessRedEnabled: Boolean(payload.businessRedEnabled)
+          });
+          setPreferenceError(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPreferenceError(error instanceof Error ? error.message : "Preferences load failed.");
+        }
+      }
+    }
+
+    loadPreferences();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function updatePreference(
+    key: keyof BeeperTriagePreferences,
+    enabled: boolean
+  ) {
+    setPreferenceError(null);
+    setTriagePreferences((current) => ({ ...current, [key]: enabled }));
+
+    try {
+      const response = await fetch("/api/beeper/preferences", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ [key]: enabled })
+      });
+
+      const payload = (await response.json()) as BeeperTriagePreferences & { error?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Preferences update failed: ${response.status}`);
+      }
+
+      setTriagePreferences({
+        familyRedEnabled: Boolean(payload.familyRedEnabled),
+        businessRedEnabled: Boolean(payload.businessRedEnabled)
+      });
+    } catch (error) {
+      setPreferenceError(error instanceof Error ? error.message : "Preferences update failed.");
+      setTriagePreferences((current) => ({ ...current, [key]: !enabled }));
+    }
+  }
+
+  async function handleToggleFamilyRed() {
+    await updatePreference("familyRedEnabled", !triagePreferences.familyRedEnabled);
+  }
+
+  async function handleToggleBusinessRed() {
+    await updatePreference("businessRedEnabled", !triagePreferences.businessRedEnabled);
+  }
 
   const filteredBySource =
     sourceFilter === "all" ? items : items.filter((item) => item.source === sourceFilter);
@@ -838,6 +922,11 @@ export function Dashboard() {
         notificationPermission={notificationPermission}
         redAlertsEnabled={redAlertsEnabled}
         onToggleRedAlerts={handleToggleRedAlerts}
+        familyRedEnabled={triagePreferences.familyRedEnabled}
+        businessRedEnabled={triagePreferences.businessRedEnabled}
+        onToggleFamilyRed={handleToggleFamilyRed}
+        onToggleBusinessRed={handleToggleBusinessRed}
+        preferenceError={preferenceError}
       />
       <MessageDrawer
         item={selectedItem}

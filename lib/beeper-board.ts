@@ -1,5 +1,7 @@
 import { ensureBeeperSchema } from "@/lib/beeper-schema";
+import { getBeeperTriagePreferences } from "@/lib/beeper-preferences";
 import { getMysqlPool } from "@/lib/mysql";
+import { resolvePreferencePriority } from "@/lib/beeper-triage";
 
 export type BeeperPriorityColor = "red" | "yellow" | "green";
 
@@ -42,6 +44,7 @@ const priorityMeta: Record<BeeperPriorityColor, { title: string; description: st
 
 export async function fetchBeeperBoardMessages(limit = 100) {
   await ensureBeeperSchema();
+  const preferences = await getBeeperTriagePreferences();
 
   const pool = getMysqlPool();
   const safeLimit = Math.max(1, Math.min(500, Math.floor(limit)));
@@ -83,28 +86,43 @@ export async function fetchBeeperBoardMessages(limit = 100) {
     triaged_at: Date | string | null;
   }>;
 
-  return result.map((row) => ({
-    beeperMessageId: row.beeper_message_id,
-    beeperChatId: row.beeper_chat_id,
-    accountId: row.account_id,
-    senderName: row.sender_name,
-    chatName: row.chat_name,
-    sourcePlatform: row.source_platform,
-    rawContent: row.raw_content,
-    messageTimestamp:
-      row.message_timestamp instanceof Date
-        ? row.message_timestamp.toISOString()
-        : String(row.message_timestamp),
-    priorityColor: row.priority_color,
-    summary: row.summary,
-    reason: row.reason,
-    triagedAt:
-      row.triaged_at instanceof Date
-        ? row.triaged_at.toISOString()
-        : row.triaged_at
-          ? String(row.triaged_at)
-          : null
-  }));
+  return result.map((row) => {
+    const resolvedPriority = resolvePreferencePriority({
+      senderName: row.sender_name,
+      chatName: row.chat_name,
+      sourcePlatform: row.source_platform,
+      rawContent: row.raw_content,
+      timestamp:
+        row.message_timestamp instanceof Date
+          ? row.message_timestamp.toISOString()
+          : String(row.message_timestamp),
+      familyRedEnabled: preferences.familyRedEnabled,
+      businessRedEnabled: preferences.businessRedEnabled
+    });
+
+    return {
+      beeperMessageId: row.beeper_message_id,
+      beeperChatId: row.beeper_chat_id,
+      accountId: row.account_id,
+      senderName: row.sender_name,
+      chatName: row.chat_name,
+      sourcePlatform: row.source_platform,
+      rawContent: row.raw_content,
+      messageTimestamp:
+        row.message_timestamp instanceof Date
+          ? row.message_timestamp.toISOString()
+          : String(row.message_timestamp),
+      priorityColor: resolvedPriority.priorityColor ?? row.priority_color,
+      summary: row.summary,
+      reason: resolvedPriority.reason ?? row.reason,
+      triagedAt:
+        row.triaged_at instanceof Date
+          ? row.triaged_at.toISOString()
+          : row.triaged_at
+            ? String(row.triaged_at)
+            : null
+    };
+  });
 }
 
 export async function fetchBeeperBoardGroups(limit = 100) {
