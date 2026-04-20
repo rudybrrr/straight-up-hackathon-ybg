@@ -85,6 +85,8 @@ The project includes a Beeper ingestion path for messages you want to store in M
 - Incoming messages are stored with metadata, the raw payload, sender info, and timestamps.
 - Start the listener with `npm run beeper:listen`.
 - The Beeper tables are created automatically the first time the sync runs.
+- Each stored message is automatically sent to OpenAI and labeled `red`, `yellow`, or `green`.
+- The basic live board is available at `/beeper`.
 
 By default, self-sent messages are skipped. Set `BEEPER_STORE_SELF_MESSAGES=true` if you want those stored too.
 Because this is polling-based, it watches for the newest message rather than backfilling full chat history.

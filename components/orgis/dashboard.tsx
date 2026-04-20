@@ -188,6 +188,12 @@ export function Dashboard() {
               <Badge className="border-slate-200 bg-white px-3 py-1 text-slate-700">Local-first</Badge>
               <Badge className="border-slate-200 bg-white px-3 py-1 text-slate-700">Next.js 15</Badge>
               <Badge className="border-slate-200 bg-white px-3 py-1 text-slate-700">Vercel AI SDK</Badge>
+              <a
+                href="/beeper"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Open Beeper board
+              </a>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { getMysqlPool } from "@/lib/mysql";
 import { ensureBeeperSchema } from "@/lib/beeper-schema";
+import { triageBeeperMessage } from "@/lib/beeper-triage";
 
 type BeeperChat = {
   id: string;
@@ -43,6 +44,14 @@ export type SyncedBeeperMessage = {
   rawContent: string;
   isSender: boolean;
   payloadJson: string;
+};
+
+type StoredBeeperTriage = {
+  beeperMessageId: string;
+  priorityColor: "red" | "yellow" | "green";
+  summary: string;
+  reason: string;
+  modelName: string | null;
 };
 
 export type BeeperSyncResult = {
@@ -102,13 +111,19 @@ function safeJson(value: unknown) {
 }
 
 async function beeperFetch<T>(baseUrl: string, token: string, endpoint: string) {
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    cache: "no-store"
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${baseUrl}${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      cache: "no-store"
+    });
+  } catch {
+    throw new Error(`Unable to connect to Beeper at ${baseUrl}. Is Beeper Desktop running?`);
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -233,6 +248,30 @@ async function upsertChatState(state: BeeperChatState) {
   );
 }
 
+async function upsertMessageTriage(triage: StoredBeeperTriage) {
+  const pool = getMysqlPool();
+  await pool.execute(
+    `
+      INSERT INTO beeper_message_triage (
+        beeper_message_id,
+        priority_color,
+        summary,
+        reason,
+        model_name,
+        triaged_at
+      )
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3))
+      ON DUPLICATE KEY UPDATE
+        priority_color = VALUES(priority_color),
+        summary = VALUES(summary),
+        reason = VALUES(reason),
+        model_name = VALUES(model_name),
+        triaged_at = CURRENT_TIMESTAMP(3)
+    `,
+    [triage.beeperMessageId, triage.priorityColor, triage.summary, triage.reason, triage.modelName]
+  );
+}
+
 function isNewerMessage(current: { id: string }, state: BeeperChatState | null) {
   if (!state?.lastMessageId) {
     return true;
@@ -293,6 +332,22 @@ export async function syncBeeperMessages() {
     } else {
       messagesSkipped += 1;
     }
+
+    const triage = await triageBeeperMessage({
+      senderName: storedMessage.senderName,
+      chatName: storedMessage.chatName,
+      sourcePlatform: storedMessage.sourcePlatform,
+      rawContent: storedMessage.rawContent,
+      timestamp: storedMessage.messageTimestamp
+    });
+
+    await upsertMessageTriage({
+      beeperMessageId: storedMessage.beeperMessageId,
+      priorityColor: triage.priorityColor,
+      summary: triage.summary,
+      reason: triage.reason,
+      modelName: process.env.OPENAI_API_KEY ? process.env.OPENAI_MODEL || "gpt-4.1-mini" : null
+    });
 
     await upsertChatState({
       beeperChatId: chat.id,
