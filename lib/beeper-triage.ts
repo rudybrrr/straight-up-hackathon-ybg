@@ -64,8 +64,16 @@ const lowPrioritySignals = [
   /\bwhen you have time\b/i,
   /\binformation only\b/i,
   /\bjust letting you know\b/i,
+  /\bnudes?\b/i,
+  /\bsexy\b/i,
+  /\bsex\b/i,
+  /\bexplicit\b/i,
+  /\bporn\b/i,
   /\bprofanity\b/i,
-  /\babuse\b/i
+  /\babuse\b/i,
+  /\bharass(?:ment|ing)?\b/i,
+  /\binsult\b/i,
+  /\btoxic\b/i
 ];
 
 const uselessInfoSignals = [/^[\p{L}]{1,12}$/u];
@@ -120,11 +128,12 @@ function buildPrompt(input: BeeperTriageInput) {
     "Return only structured output that matches the schema.",
     "Do not write a reply.",
     "Use concise, human-readable language.",
-    "Red means the sender is directly asking the receiver to do a task, or the message is urgent/time-sensitive/important enough to reply soon.",
+    "Red means the sender is directly asking the receiver to do a practical task, or the message is urgent/time-sensitive/important enough to reply soon.",
     "Yellow means it is worth replying to, but it can wait a bit and does not require immediate action.",
-    "Green means low urgency, informational, no action is needed, or the message is just meaningless, abusive, profane, or isolated language with no actionable request.",
+    "Green means low urgency, informational, no action is needed, or the message is just meaningless, abusive, profane, sexual, or isolated language with no actionable request.",
     "Mark red when the sender asks the receiver to perform a task such as send, review, confirm, fix, update, book, pay, reply, handle, or do something.",
-    "Do not mark red just because the message contains profanity, insults, or slurs unless there is also a direct task request or urgent action.",
+    "Do not mark red just because the message contains profanity, insults, slurs, sexual content, or harassment unless there is also a clear practical task request or urgent action.",
+    "If the message is an inappropriate request like asking for nudes, sexual favors, insults, or harassment, treat it as green unless it includes a real practical action request.",
     "",
     "Message:",
     JSON.stringify(input, null, 2)
