@@ -140,6 +140,9 @@ export function Dashboard() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
+  const [clearingRead, setClearingRead] = useState(false);
+  const [confirmClearRead, setConfirmClearRead] = useState(false);
+  const [clearReadError, setClearReadError] = useState<string | null>(null);
 
   const counts = getDigestCounts(items);
   const sourceCounts = getSourceCounts(items);
@@ -301,6 +304,71 @@ export function Dashboard() {
       }
       return next;
     });
+  }
+
+  async function handleClearRead() {
+    if (clearingRead) {
+      return;
+    }
+
+    if (!confirmClearRead) {
+      setConfirmClearRead(true);
+      setClearReadError(null);
+
+      window.setTimeout(() => {
+        setConfirmClearRead(false);
+      }, 4500);
+
+      return;
+    }
+
+    const readItems = baseItems.filter((item) => isRead(item.id));
+    const beeperMessageIds = readItems
+      .map((item) => item.beeperMessageId)
+      .filter((value): value is string => Boolean(value));
+
+    if (beeperMessageIds.length === 0) {
+      setConfirmClearRead(false);
+      setClearReadError("Nothing to delete from the database.");
+      return;
+    }
+
+    setClearingRead(true);
+    setClearReadError(null);
+
+    try {
+      const response = await fetch("/api/beeper/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          messageIds: beeperMessageIds
+        })
+      });
+
+      const payload = (await response.json()) as { ok?: boolean; deleted?: number; error?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error ?? `Delete failed: ${response.status}`);
+      }
+
+      const deletedIdSet = new Set(readItems.map((item) => item.id));
+
+      setItems((current) => current.filter((item) => !deletedIdSet.has(item.id)));
+      setReadIds((current) => {
+        const next = new Set(current);
+        for (const id of deletedIdSet) {
+          next.delete(id);
+        }
+        return next;
+      });
+      setSelectedItemId((current) => (current && deletedIdSet.has(current) ? null : current));
+      setConfirmClearRead(false);
+    } catch (error) {
+      setClearReadError(error instanceof Error ? error.message : "Delete failed.");
+    } finally {
+      setClearingRead(false);
+    }
   }
 
   return (
@@ -489,7 +557,30 @@ export function Dashboard() {
                       </button>
                     );
                   })}
+
+                  {readFilter === "read" ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="rounded-full"
+                      disabled={clearingRead || baseReadCount === 0}
+                      onClick={handleClearRead}
+                    >
+                      {clearingRead
+                        ? "Clearing…"
+                        : confirmClearRead
+                          ? "Confirm clear"
+                          : "Clear read"}
+                    </Button>
+                  ) : null}
                 </div>
+
+                {readFilter === "read" && clearReadError ? (
+                  <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {clearReadError}
+                  </div>
+                ) : null}
               </CardHeader>
 
               <CardContent className="p-0">
