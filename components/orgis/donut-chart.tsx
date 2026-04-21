@@ -19,13 +19,15 @@ export function DonutChart({
   subtitle,
   slices,
   size = 168,
-  strokeWidth = 18
+  strokeWidth = 18,
+  align = "start"
 }: {
   title: string;
   subtitle?: string;
   slices: DonutSlice[];
   size?: number;
   strokeWidth?: number;
+  align?: "start" | "center";
 }) {
   const safeSize = Math.max(120, Math.min(240, Math.floor(size)));
   const safeStrokeWidth = Math.max(10, Math.min(28, Math.floor(strokeWidth)));
@@ -54,7 +56,12 @@ export function DonutChart({
   });
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+    <div
+      className={cn(
+        "flex flex-col gap-4",
+        align === "center" ? "items-center justify-center text-center" : "sm:flex-row sm:items-center sm:gap-6"
+      )}
+    >
       <div className="relative shrink-0">
         <svg
           width={safeSize}
@@ -72,7 +79,7 @@ export function DonutChart({
             cy={safeSize / 2}
             r={radius}
             fill="transparent"
-            stroke="hsl(214 32% 91% / 0.9)"
+            stroke="hsl(var(--border) / 0.9)"
             strokeWidth={safeStrokeWidth}
           />
 
@@ -97,34 +104,40 @@ export function DonutChart({
         </svg>
 
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Overview
           </p>
-          <p className="mt-1 text-2xl font-semibold text-slate-950">{total}</p>
-          <p className="text-xs text-slate-500">threads</p>
+          <p className="mt-1 text-2xl font-semibold text-foreground">{total}</p>
+          <p className="text-xs text-muted-foreground">threads</p>
         </div>
       </div>
 
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-950">{title}</p>
-        {subtitle ? <p className="mt-1 text-sm text-slate-600">{subtitle}</p> : null}
+      <div className={cn("min-w-0", align === "center" ? "w-full max-w-md" : undefined)}>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        {subtitle ? (
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        ) : null}
 
         <div className="mt-4 space-y-2">
           {arcs.map((slice) => (
             <div
               key={slice.key}
-              className="flex items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white/80 px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/70 px-4 py-3 transition-colors"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span
                   className={cn("h-2.5 w-2.5 shrink-0 rounded-full", slice.className)}
                   aria-hidden="true"
                 />
-                <span className="truncate text-sm font-medium text-slate-900">{slice.label}</span>
+                <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {slice.label}
+                </span>
               </div>
-              <div className="flex shrink-0 items-center gap-3 text-sm text-slate-700">
+              <div className="flex shrink-0 items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
                 <span className="tabular-nums">{slice.value}</span>
-                <span className="text-slate-400">{formatPercent(slice.fraction)}</span>
+                <span className="text-slate-400 dark:text-slate-400">
+                  {formatPercent(slice.fraction)}
+                </span>
               </div>
             </div>
           ))}

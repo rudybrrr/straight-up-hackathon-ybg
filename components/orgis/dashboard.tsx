@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/orgis/empty-state";
+import { EdgeSprite } from "@/components/orgis/edge-sprite";
 import { HamburgerDrawer } from "@/components/orgis/hamburger-drawer";
 import { MessageDrawer } from "@/components/orgis/message-drawer";
 import { OrgisLogo } from "@/components/orgis/orgis-logo";
@@ -136,6 +137,7 @@ export function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
+  const [snoozed, setSnoozed] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [clearingRead, setClearingRead] = useState(false);
   const [confirmClearRead, setConfirmClearRead] = useState(false);
@@ -203,7 +205,7 @@ export function Dashboard() {
     } catch {
       // Ignore malformed local storage.
     }
-  }, []);
+  }, [redAlertsEnabled]);
 
   useEffect(() => {
     try {
@@ -212,6 +214,27 @@ export function Dashboard() {
       // Ignore storage failures (private mode, quota, etc).
     }
   }, [readIds]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("orgis.snoozed");
+      if (raw === null) {
+        return;
+      }
+
+      setSnoozed(raw === "true");
+    } catch {
+      // Ignore malformed local storage.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("orgis.snoozed", String(snoozed));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [snoozed]);
 
   useEffect(() => {
     try {
@@ -224,7 +247,7 @@ export function Dashboard() {
     } catch {
       // Ignore malformed local storage.
     }
-  }, []);
+  }, [redAlertsEnabled]);
 
   useEffect(() => {
     try {
@@ -427,7 +450,7 @@ export function Dashboard() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, []);
+  }, [redAlertsEnabled]);
 
   async function handleToggleRedAlerts() {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -626,32 +649,63 @@ export function Dashboard() {
     await togglePinForItem(selectedItem);
   }
 
+  function handleToggleSnooze() {
+    setSnoozed((current) => {
+      const next = !current;
+      if (next) {
+        setSelectedItemId(null);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="relative min-h-screen">
+      <EdgeSprite />
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="orgis-grid absolute inset-0 opacity-50" />
-        <div className="absolute left-[-10%] top-0 h-80 w-80 rounded-full bg-cyan-400/16 blur-3xl" />
-        <div className="absolute right-[-8%] top-8 h-80 w-80 rounded-full bg-amber-300/16 blur-3xl" />
-        <div className="absolute left-[30%] top-[62%] h-72 w-72 rounded-full bg-indigo-400/10 blur-3xl" />
+        <div className="orgis-grid absolute inset-0 opacity-50 dark:opacity-25" />
+        <div className="orgis-blob absolute left-[-10%] top-0 h-80 w-80 rounded-full bg-cyan-400/16 blur-3xl dark:bg-cyan-400/10" />
+        <div className="orgis-blob orgis-blob--slow orgis-blob--delay absolute right-[-8%] top-8 h-80 w-80 rounded-full bg-amber-300/16 blur-3xl dark:bg-amber-300/10" />
+        <div className="orgis-blob orgis-blob--slow absolute left-[30%] top-[62%] h-72 w-72 rounded-full bg-indigo-400/10 blur-3xl dark:bg-indigo-400/12" />
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/70 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/55 transition-colors">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <OrgisLogo compact />
 
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-slate-700">
+              {snoozed ? (
+                <Badge className="border-border/70 bg-card/70 px-3 py-1 text-muted-foreground">
+                  Snoozed
+                </Badge>
+              ) : null}
+              <Badge className="border-border/70 bg-card/70 px-3 py-1 text-muted-foreground">
                 {items.length} threads
               </Badge>
-              <Badge className="border-slate-200 bg-white/90 px-3 py-1 text-slate-700">
+              <Badge className="border-border/70 bg-card/70 px-3 py-1 text-muted-foreground">
                 {activeSources.length} apps
+              </Badge>
+              {refreshedAt ? (
+                <Badge className="border-border/70 bg-card/70 px-3 py-1 text-muted-foreground">
+                  Updated {formatTimestamp(refreshedAt)}
+                </Badge>
+              ) : null}
+              <Badge
+                className={cn(
+                  "border px-3 py-1",
+                  syncing
+                    ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-200"
+                )}
+              >
+                {syncing ? "Refreshing..." : "Live"}
               </Badge>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="rounded-2xl bg-white/90"
+                className="rounded-2xl bg-card/70"
                 aria-label="Open menu"
                 onClick={() => setMenuOpen(true)}
               >
@@ -663,64 +717,80 @@ export function Dashboard() {
       </header>
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
-          {syncError ? (
-            <div className="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
-              Live data unavailable: {syncError}
-            </div>
-          ) : null}
-
-          <Card className="border-slate-200/80 bg-white/90">
-            <CardContent className="p-5">
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
-                <DonutChart
-                  title="Queue distribution"
-                  subtitle="Act now, review soon, and for later at a glance."
-                  slices={[
-                    {
-                      key: "act_now",
-                      label: "Act now",
-                      value: counts.act_now,
-                      className: "text-rose-600 stroke-rose-500"
-                    },
-                    {
-                      key: "review_soon",
-                      label: "Review",
-                      value: counts.review_soon,
-                      className: "text-amber-600 stroke-amber-500"
-                    },
-                    {
-                      key: "for_later",
-                      label: "Later",
-                      value: counts.for_later,
-                      className: "text-sky-600 stroke-sky-500"
-                    }
-                  ]}
-                />
-
-                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                  <div className="rounded-[1.5rem] border border-rose-200/80 bg-gradient-to-br from-white to-rose-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Act now</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.act_now}</p>
-                  </div>
-                  <div className="rounded-[1.5rem] border border-amber-200/80 bg-gradient-to-br from-white to-amber-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Review</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.review_soon}</p>
-                  </div>
-                  <div className="rounded-[1.5rem] border border-sky-200/70 bg-gradient-to-br from-white to-sky-50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Later</p>
-                    <p className="mt-2 text-3xl font-semibold text-slate-950">{counts.for_later}</p>
-                  </div>
+        {snoozed ? (
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <Card className="w-full max-w-xl bg-card/70">
+              <CardHeader className="space-y-2">
+                <CardTitle>Snooze mode</CardTitle>
+                <CardDescription>
+                  Your inbox is hidden while Orgis continues running in the background.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" className="rounded-full" onClick={handleToggleSnooze}>
+                    Resume
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => setMenuOpen(true)}
+                  >
+                    Settings
+                  </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-6">
+              {syncError ? (
+                <div className="rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
+                  Live data unavailable: {syncError}
+                </div>
+              ) : null}
 
-        <main className="mt-6">
-          <section className="space-y-4">
-            <Card className="border-slate-200/80 bg-white/92">
-              <CardHeader className="space-y-4 border-b border-slate-100 pb-5">
+              <Card className="bg-card/70">
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex justify-center">
+                    <div className="w-full max-w-4xl">
+                      <DonutChart
+                        title="Queue distribution"
+                        subtitle="Act now, review soon, and for later at a glance."
+                        align="center"
+                        slices={[
+                          {
+                            key: "act_now",
+                            label: "Act now",
+                            value: counts.act_now,
+                            className: "text-rose-600 stroke-rose-500"
+                          },
+                          {
+                            key: "review_soon",
+                            label: "Review",
+                            value: counts.review_soon,
+                            className: "text-amber-600 stroke-amber-500"
+                          },
+                          {
+                            key: "for_later",
+                            label: "Later",
+                            value: counts.for_later,
+                            className: "text-sky-600 stroke-sky-500"
+                          }
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <main className="mt-6">
+              <section className="space-y-4">
+                <Card className="bg-card/70">
+                  <CardHeader className="space-y-4 border-b border-border/70 pb-5">
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                   <div className="space-y-1">
                     <CardTitle>Priority list</CardTitle>
@@ -731,7 +801,7 @@ export function Dashboard() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge className="w-fit border-slate-200 bg-slate-50 px-3 py-1 text-slate-700">
+                    <Badge className="w-fit border-border/70 bg-muted/40 px-3 py-1 text-muted-foreground">
                       {visibleItems.length} shown
                     </Badge>
                     <Button
@@ -754,8 +824,8 @@ export function Dashboard() {
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                       viewMode === "priority"
-                        ? "border-slate-950 bg-slate-950 text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        ? "border-slate-950 bg-slate-950 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                        : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                     )}
                   >
                     Priority view
@@ -770,8 +840,8 @@ export function Dashboard() {
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                       viewMode === "new"
-                        ? "border-slate-950 bg-slate-950 text-white"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        ? "border-slate-950 bg-slate-950 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                        : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                     )}
                   >
                     New messages
@@ -783,8 +853,8 @@ export function Dashboard() {
                     className={cn(
                       "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                       pinFilter === "pinned"
-                        ? "border-amber-500 bg-amber-50 text-amber-800"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                        ? "border-amber-500 bg-amber-50 text-amber-800 dark:border-amber-400/60 dark:bg-amber-950/20 dark:text-amber-200"
+                        : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                     )}
                   >
                     <span className="inline-flex items-center gap-2">
@@ -807,20 +877,20 @@ export function Dashboard() {
                 </div>
 
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="search"
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search sender, chat, or message"
-                    className="h-11 w-full rounded-full border border-slate-200 bg-white pl-11 pr-11 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                    className="h-11 w-full rounded-full border border-border/70 bg-background pl-11 pr-11 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-border focus:ring-2 focus:ring-ring/25"
                   />
                   {searchQuery ? (
                     <button
                       type="button"
                       onClick={() => setSearchQuery("")}
                       aria-label="Clear search"
-                      className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                      className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -842,8 +912,8 @@ export function Dashboard() {
                               className={cn(
                                 "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                                 active
-                                  ? "border-slate-950 bg-slate-950 text-white"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                  ? "border-slate-950 bg-slate-950 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                                  : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                               )}
                             >
                               {option.label}
@@ -867,8 +937,8 @@ export function Dashboard() {
                               className={cn(
                                 "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                                 active
-                                  ? "border-slate-950 bg-slate-950 text-white"
-                                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                  ? "border-slate-950 bg-slate-950 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                                  : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                               )}
                             >
                               {option.label}
@@ -896,15 +966,17 @@ export function Dashboard() {
                               "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                               "inline-flex items-center gap-2",
                               active
-                                ? "border-slate-950 bg-slate-950 text-white"
-                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                ? "border-slate-950 bg-slate-950 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950"
+                                : "border-border/70 bg-card/60 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                             )}
                           >
                             {option.label}
                             <span
                               className={cn(
                                 "rounded-full px-2 py-0.5 text-xs",
-                                active ? "bg-white/15 text-white" : "bg-slate-100 text-slate-600"
+                                active
+                                  ? "bg-white/15 text-white dark:bg-slate-950/10 dark:text-slate-900"
+                                  : "bg-muted/60 text-muted-foreground"
                               )}
                             >
                               {option.countLabel}
@@ -932,20 +1004,20 @@ export function Dashboard() {
                     </div>
 
                     {readFilter === "read" && clearReadError ? (
-                      <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                      <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200">
                         {clearReadError}
                       </div>
                     ) : null}
 
                     {pinFilter === "pinned" ? (
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-200">
                         Showing pinned messages
                       </div>
                     ) : null}
 
                     {searchQuery ? (
-                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                        Searching for "{searchQuery}"
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Searching for &ldquo;{searchQuery}&rdquo;
                       </div>
                     ) : null}
                   </>
@@ -957,14 +1029,14 @@ export function Dashboard() {
                   <div className="p-5">{emptyState}</div>
                 ) : (
                   <>
-                    <div className="hidden grid-cols-[148px_132px_minmax(0,1fr)_112px] gap-4 border-b border-slate-400 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 md:grid">
-                      <span className="border-r border-slate-400 pr-4">App</span>
-                      <span className="border-r border-slate-400 pr-4">Priority</span>
-                      <span className="border-r border-slate-400 pr-4">Message</span>
+                    <div className="hidden grid-cols-[148px_132px_minmax(0,1fr)_112px] gap-4 border-b border-border/70 bg-muted/30 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground md:grid">
+                      <span className="border-r border-border/70 pr-4">App</span>
+                      <span className="border-r border-border/70 pr-4">Priority</span>
+                      <span className="border-r border-border/70 pr-4">Message</span>
                       <span className="text-right">Updated</span>
                     </div>
 
-                    <div className="divide-y divide-slate-300">
+                    <div className="divide-y divide-border/70">
                       {visibleItems.map((item) => {
                         const selected = item.id === selectedItemId;
                         const read = isRead(item.id);
@@ -984,27 +1056,42 @@ export function Dashboard() {
                               }
                             }}
                             className={cn(
-                              "w-full px-5 py-4 text-left transition-colors",
-                              "border-b border-slate-300 last:border-b-0",
-                              "hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950/40 focus-visible:ring-offset-2",
-                              selected ? "bg-slate-50" : "bg-transparent"
+                              "relative w-full px-5 py-4 text-left transition-[transform,background-color,box-shadow] duration-200",
+                              "hover:-translate-y-[1px] hover:bg-muted/30 hover:shadow-soft",
+                              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                              selected ? "bg-muted/30 shadow-soft" : "bg-transparent"
                             )}
                           >
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "absolute left-0 top-0 h-full w-1 rounded-r-full",
+                                item.priority === "act_now"
+                                  ? "bg-gradient-to-b from-rose-500/90 to-rose-500/20"
+                                  : item.priority === "review_soon"
+                                    ? "bg-gradient-to-b from-amber-500/90 to-amber-500/20"
+                                    : "bg-gradient-to-b from-sky-500/70 to-sky-500/10"
+                              )}
+                            />
                             <div className="grid gap-3 md:grid-cols-[148px_132px_minmax(0,1fr)_112px] md:items-center md:gap-4">
-                              <div className="flex items-center gap-2 md:border-r md:border-slate-400 md:pr-4">
+                              <div className="flex items-center gap-2 md:border-r md:border-border/70 md:pr-4">
+                                <span
+                                  aria-hidden="true"
+                                  className="h-6 w-6 rounded-xl border border-border/70 bg-gradient-to-br from-muted/40 to-background shadow-sm"
+                                />
                                 <Badge className={cn("border", sourceBadgeClass(item.source))}>
                                   {sourceLabel(item.source)}
                                 </Badge>
                               </div>
 
-                              <div className="flex items-center gap-2 md:border-r md:border-slate-400 md:pr-4">
+                              <div className="flex items-center gap-2 md:border-r md:border-border/70 md:pr-4">
                                 <Badge className={cn("border", priorityBadgeClass(item.priority))}>
                                   {priorityLabel(item.priority)}
                                 </Badge>
                                 {read ? (
-                                  <span className="text-xs font-medium text-slate-400">Read</span>
+                                  <span className="text-xs font-medium text-muted-foreground">Read</span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700">
+                                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-200">
                                     <span
                                       className="h-1.5 w-1.5 rounded-full bg-sky-500"
                                       aria-hidden="true"
@@ -1014,21 +1101,21 @@ export function Dashboard() {
                                 )}
                               </div>
 
-                              <div className="min-w-0 md:border-r md:border-slate-400 md:pr-4">
+                              <div className="min-w-0 md:border-r md:border-border/70 md:pr-4">
                                 <p
                                   className={cn(
                                     "text-sm font-semibold",
-                                    read ? "text-slate-800" : "text-slate-950"
+                                    read ? "text-foreground/80" : "text-foreground"
                                   )}
                                 >
                                   {item.sender}
-                                  <span className="font-normal text-slate-500">
+                                  <span className="font-normal text-muted-foreground">
                                     {" "}
                                     | {item.chatOrThreadName}
                                   </span>
                                   {item.isPinned ? (
                                     <span
-                                      className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-800"
+                                      className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
                                       title="Pinned"
                                       aria-label="Pinned"
                                     >
@@ -1036,21 +1123,21 @@ export function Dashboard() {
                                     </span>
                                   ) : null}
                                 </p>
-                                <p className="mt-1 text-sm leading-6 text-slate-600">{item.summary}</p>
-                                <p className="mt-1 text-xs leading-5 text-slate-500">
+                                <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.summary}</p>
+                                <p className="mt-1 text-xs leading-5 text-muted-foreground">
                                   {previewText(item.reason, 110)}
                                 </p>
                               </div>
 
-                              <div className="flex items-center justify-between gap-2 text-left text-xs text-slate-500 md:border-l md:border-slate-400 md:pl-4 md:text-right">
+                              <div className="flex items-center justify-between gap-2 text-left text-xs text-muted-foreground md:border-l md:border-border/70 md:pl-4 md:text-right">
                                 <span>{formatTimestamp(item.timestamp)}</span>
                                 <button
                                   type="button"
                                   className={cn(
                                     "inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors",
                                     item.isPinned
-                                      ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                                      : "border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                                      ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-950/45"
+                                      : "border-border/70 bg-card/70 text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                                   )}
                                   aria-label={item.isPinned ? "Unpin message" : "Pin message"}
                                   title={item.isPinned ? "Unpin" : "Pin"}
@@ -1073,6 +1160,8 @@ export function Dashboard() {
             </Card>
           </section>
         </main>
+          </>
+        )}
       </div>
 
       <HamburgerDrawer
@@ -1091,6 +1180,8 @@ export function Dashboard() {
         onToggleFamilyRed={handleToggleFamilyRed}
         onToggleBusinessRed={handleToggleBusinessRed}
         preferenceError={preferenceError}
+        snoozed={snoozed}
+        onToggleSnooze={handleToggleSnooze}
       />
       <MessageDrawer
         item={selectedItem}

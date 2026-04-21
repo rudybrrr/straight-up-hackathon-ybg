@@ -20,14 +20,14 @@ export function EmptyState({
   onSecondaryAction?: () => void;
 }) {
   return (
-    <Card className="border-dashed border-slate-300 bg-white/80">
+    <Card className="border-dashed bg-card/70">
       <CardContent className="flex flex-col items-center justify-center gap-4 px-6 py-14 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-700">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-muted/40 text-muted-foreground">
           {icon}
         </div>
         <div className="max-w-md space-y-2">
-          <h3 className="text-lg font-semibold tracking-tight text-slate-950">{title}</h3>
-          <p className="text-sm leading-6 text-slate-600">{description}</p>
+          <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+          <p className="text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
 
         {(primaryActionLabel || secondaryActionLabel) && (
