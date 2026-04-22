@@ -39,7 +39,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground antialiased">
         <div className="flex min-h-screen flex-col">
           <div className="flex-1">{children}</div>
-          <footer className="border-t border-border/70 bg-background/70 py-8 backdrop-blur supports-[backdrop-filter]:bg-background/55 transition-colors">
+          <footer className="border-t border-border/70 bg-background py-8 transition-colors">
             <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
               <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                 <span

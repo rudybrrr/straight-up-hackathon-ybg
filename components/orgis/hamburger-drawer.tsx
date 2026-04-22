@@ -178,7 +178,7 @@ export function HamburgerDrawer({
         type="button"
         aria-label="Close menu"
         className={cn(
-          "absolute inset-0 bg-slate-950/35 backdrop-blur-[2px]",
+          "absolute inset-0 bg-slate-950/35",
           "transition-opacity duration-200 motion-reduce:transition-none",
           visible ? "opacity-100" : "opacity-0"
         )}
@@ -190,7 +190,7 @@ export function HamburgerDrawer({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "absolute right-0 top-0 h-full w-full border-l border-border/70 bg-card/95 shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/80",
+          "absolute right-0 top-0 h-full w-full border-l border-border/70 bg-card shadow-2xl",
           "sm:max-w-sm",
           "transform-gpu transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none",
           visible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"

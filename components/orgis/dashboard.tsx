@@ -205,7 +205,7 @@ export function Dashboard() {
     } catch {
       // Ignore malformed local storage.
     }
-  }, [redAlertsEnabled]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -247,7 +247,7 @@ export function Dashboard() {
     } catch {
       // Ignore malformed local storage.
     }
-  }, [redAlertsEnabled]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -663,13 +663,10 @@ export function Dashboard() {
     <div className="relative min-h-screen">
       <EdgeSprite />
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="orgis-grid absolute inset-0 opacity-50 dark:opacity-25" />
-        <div className="orgis-blob absolute left-[-10%] top-0 h-80 w-80 rounded-full bg-cyan-400/16 blur-3xl dark:bg-cyan-400/10" />
-        <div className="orgis-blob orgis-blob--slow orgis-blob--delay absolute right-[-8%] top-8 h-80 w-80 rounded-full bg-amber-300/16 blur-3xl dark:bg-amber-300/10" />
-        <div className="orgis-blob orgis-blob--slow absolute left-[30%] top-[62%] h-72 w-72 rounded-full bg-indigo-400/10 blur-3xl dark:bg-indigo-400/12" />
+        <div className="orgis-grid absolute inset-0 opacity-35 dark:opacity-20" />
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/55 transition-colors">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background transition-colors">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <OrgisLogo compact />

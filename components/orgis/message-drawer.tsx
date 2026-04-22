@@ -106,7 +106,7 @@ export function MessageDrawer({
       <button
         type="button"
         aria-label="Close detail drawer"
-        className="absolute inset-0 z-0 bg-slate-950/45 backdrop-blur-[3px] transition-opacity duration-200 motion-reduce:transition-none"
+        className="absolute inset-0 z-0 bg-slate-950/45 transition-opacity duration-200 motion-reduce:transition-none"
         onClick={onClose}
       />
 
@@ -115,7 +115,7 @@ export function MessageDrawer({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "absolute right-0 top-0 z-10 h-full w-full border-l border-border/70 bg-card/95 shadow-2xl backdrop-blur supports-[backdrop-filter]:bg-card/80",
+          "absolute right-0 top-0 z-10 h-full w-full border-l border-border/70 bg-card shadow-2xl",
           "sm:max-w-xl"
         )}
       >

@@ -63,11 +63,16 @@ html.dark {
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.12), transparent 24%),
-    radial-gradient(circle at 88% 10%, rgba(251, 146, 60, 0.14), transparent 20%),
-    radial-gradient(circle at 50% 100%, rgba(15, 23, 42, 0.05), transparent 28%),
-    linear-gradient(180deg, rgba(255, 247, 235, 0.98), rgba(238, 232, 223, 1));
+  background-color: hsl(var(--background));
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0) 42%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(15, 23, 42, 0.018) 0px,
+      rgba(15, 23, 42, 0.018) 1px,
+      transparent 1px,
+      transparent 6px
+    );
   color: hsl(var(--foreground));
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -76,39 +81,20 @@ body {
 }
 
 html.dark body {
-  background:
-    radial-gradient(circle at 12% 18%, rgba(34, 211, 238, 0.12), transparent 28%),
-    radial-gradient(circle at 88% 10%, rgba(251, 146, 60, 0.14), transparent 26%),
-    radial-gradient(circle at 50% 110%, rgba(99, 102, 241, 0.14), transparent 34%),
-    linear-gradient(180deg, rgba(2, 6, 23, 0.96), rgba(2, 6, 23, 1));
+  background-color: hsl(var(--background));
+  background-image:
+    linear-gradient(180deg, rgba(148, 163, 184, 0.06), rgba(2, 6, 23, 0) 48%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(226, 232, 240, 0.02) 0px,
+      rgba(226, 232, 240, 0.02) 1px,
+      transparent 1px,
+      transparent 6px
+    );
 }
 
 ::selection {
   background: rgba(8, 145, 178, 0.18);
-}
-
-.orgis-blob {
-  animation: orgis-float 18s ease-in-out infinite;
-  transform: translate3d(0, 0, 0);
-  will-change: transform;
-}
-
-.orgis-blob--slow {
-  animation-duration: 24s;
-}
-
-.orgis-blob--delay {
-  animation-delay: -7s;
-}
-
-@keyframes orgis-float {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(0, -18px, 0) scale(1.03);
-  }
 }
 
 .orgis-sprite {
@@ -120,10 +106,9 @@ html.dark .orgis-sprite {
 }
 
 .orgis-grid {
-  background-image: linear-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.055) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
   background-size: 28px 28px;
-  mask-image: radial-gradient(circle at center, black, transparent 88%);
 }
 
 html.dark .orgis-grid {
