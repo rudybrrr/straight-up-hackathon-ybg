@@ -259,7 +259,7 @@ export function HamburgerDrawer({
                     {connectedApps.map((app) => (
                       <div
                         key={app.source}
-                        className="flex items-center justify-between rounded-3xl border border-border/70 bg-muted/40 px-4 py-3 transition-colors"
+                        className="flex items-center justify-between rounded-3xl border border-border/70 bg-muted/40 px-4 py-3 transition-colors hover:bg-muted/55"
                       >
                         <div className="flex items-center gap-2">
                           <span
@@ -344,7 +344,7 @@ export function HamburgerDrawer({
                   Notifications:{" "}
                   <span className="font-semibold text-foreground">{notificationPermission}</span>
                 </div>
-                <div className="space-y-3 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-slate-600 transition-colors dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-slate-200">
+                <div className="space-y-3 rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-foreground/80 transition-colors dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-slate-200">
                   <p className="font-semibold text-rose-700 dark:text-rose-300">Red alerts</p>
                   <Button
                     type="button"

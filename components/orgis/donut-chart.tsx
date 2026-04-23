@@ -20,7 +20,8 @@ export function DonutChart({
   slices,
   size = 168,
   strokeWidth = 18,
-  align = "start"
+  align = "start",
+  showDetails = true
 }: {
   title: string;
   subtitle?: string;
@@ -28,6 +29,7 @@ export function DonutChart({
   size?: number;
   strokeWidth?: number;
   align?: "start" | "center";
+  showDetails?: boolean;
 }) {
   const safeSize = Math.max(120, Math.min(240, Math.floor(size)));
   const safeStrokeWidth = Math.max(10, Math.min(28, Math.floor(strokeWidth)));
@@ -112,7 +114,8 @@ export function DonutChart({
         </div>
       </div>
 
-      <div className={cn("min-w-0", align === "center" ? "w-full max-w-md" : undefined)}>
+      {showDetails ? (
+        <div className={cn("min-w-0", align === "center" ? "w-full max-w-md" : undefined)}>
         <p className="text-sm font-semibold text-foreground">{title}</p>
         {subtitle ? (
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
@@ -122,20 +125,20 @@ export function DonutChart({
           {arcs.map((slice) => (
             <div
               key={slice.key}
-              className="flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/70 px-4 py-3 transition-colors"
+              className="flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/70 px-4 py-3 transition-colors hover:bg-muted/30"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span
                   className={cn("h-2.5 w-2.5 shrink-0 rounded-full", slice.className)}
                   aria-hidden="true"
                 />
-                <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                <span className="truncate text-sm font-medium text-foreground">
                   {slice.label}
                 </span>
               </div>
-              <div className="flex shrink-0 items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
+              <div className="flex shrink-0 items-center gap-3 text-sm text-foreground/80">
                 <span className="tabular-nums">{slice.value}</span>
-                <span className="text-slate-400 dark:text-slate-400">
+                <span className="text-muted-foreground">
                   {formatPercent(slice.fraction)}
                 </span>
               </div>
@@ -143,6 +146,7 @@ export function DonutChart({
           ))}
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

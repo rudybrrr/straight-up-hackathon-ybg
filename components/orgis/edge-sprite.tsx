@@ -158,9 +158,9 @@ export function EdgeSprite() {
       <svg width="26" height="26" viewBox="0 0 26 26" className="block" role="presentation">
         <defs>
           <linearGradient id="orgisSprite" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="rgb(34, 211, 238)" />
-            <stop offset="0.55" stopColor="rgb(56, 189, 248)" />
-            <stop offset="1" stopColor="rgb(251, 146, 60)" />
+            <stop offset="0" stopColor="rgb(37, 99, 235)" />
+            <stop offset="0.6" stopColor="rgb(14, 165, 233)" />
+            <stop offset="1" stopColor="rgb(99, 102, 241)" />
           </linearGradient>
         </defs>
         <circle cx="13" cy="13" r="10.5" fill="url(#orgisSprite)" opacity="0.95" />

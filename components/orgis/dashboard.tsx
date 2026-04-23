@@ -666,7 +666,7 @@ export function Dashboard() {
         <div className="orgis-grid absolute inset-0 opacity-35 dark:opacity-20" />
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background transition-colors">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-secondary transition-colors">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <OrgisLogo compact />
@@ -753,15 +753,16 @@ export function Dashboard() {
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex justify-center">
                     <div className="w-full max-w-4xl">
-                      <DonutChart
-                        title="Queue distribution"
-                        subtitle="Act now, review soon, and for later at a glance."
-                        align="center"
-                        slices={[
-                          {
-                            key: "act_now",
-                            label: "Act now",
-                            value: counts.act_now,
+                  <DonutChart
+                    title="Queue distribution"
+                    subtitle="Act now, review soon, and for later at a glance."
+                    align="center"
+                    showDetails={false}
+                    slices={[
+                      {
+                        key: "act_now",
+                        label: "Act now",
+                        value: counts.act_now,
                             className: "text-rose-600 stroke-rose-500"
                           },
                           {
