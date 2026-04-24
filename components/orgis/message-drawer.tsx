@@ -120,7 +120,7 @@ export function MessageDrawer({
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="border-b border-white/10 bg-slate-950 px-6 py-5 text-white">
+          <div className="border-b border-white/10 bg-primary px-6 py-5 text-primary-foreground">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -131,22 +131,26 @@ export function MessageDrawer({
                     {priorityLabel(item.priority)}
                   </Badge>
                   {item.isThread ? (
-                    <Badge className="border-white/10 bg-white/10 text-white">Thread</Badge>
+                    <Badge className="border-white/10 bg-white/10 text-primary-foreground">
+                      Thread
+                    </Badge>
                   ) : (
-                    <Badge className="border-white/10 bg-white/10 text-white">Message</Badge>
+                    <Badge className="border-white/10 bg-white/10 text-primary-foreground">
+                      Message
+                    </Badge>
                   )}
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-slate-400">
+                  <p className="text-xs uppercase tracking-[0.22em] text-white/70">
                     Compiled chat view
                   </p>
                   <h2
                     id={titleId}
-                    className="mt-2 text-xl font-semibold tracking-tight text-white"
+                    className="mt-2 text-xl font-semibold tracking-tight text-primary-foreground"
                   >
                     {item.sender}
                   </h2>
-                  <p className="mt-1 text-sm text-slate-300">{item.chatOrThreadName}</p>
+                  <p className="mt-1 text-sm text-white/80">{item.chatOrThreadName}</p>
                 </div>
               </div>
 
@@ -154,7 +158,7 @@ export function MessageDrawer({
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-full border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
+                  className="rounded-full border-white/20 bg-white/10 text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
                   onClick={onTogglePin}
                   disabled={pinBusy}
                 >
@@ -169,7 +173,7 @@ export function MessageDrawer({
                   size="icon"
                   onClick={onClose}
                   aria-label="Close drawer"
-                  className="text-white hover:bg-white/10 hover:text-white"
+                  className="text-primary-foreground hover:bg-white/10 hover:text-primary-foreground"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -225,7 +229,7 @@ export function MessageDrawer({
               {canReply ? (
                 <a
                   href={`beeper://chat/${encodeURIComponent(item.beeperChatId ?? "")}`}
-                  className="inline-flex h-10 items-center justify-center rounded-full border border-border/70 bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted/40"
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-border/70 bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted/40 hover:shadow"
                 >
                   Open in Beeper
                 </a>

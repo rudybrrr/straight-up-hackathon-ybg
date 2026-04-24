@@ -11,14 +11,14 @@ export function OrgisLogo({
     <div className="flex items-center gap-3 overflow-visible">
       <div
         className={cn(
-          "flex shrink-0 flex-col justify-center gap-1 rounded-[1.35rem] bg-slate-950 shadow-soft ring-1 ring-white/10 dark:bg-slate-900",
+          "flex shrink-0 flex-col justify-center gap-1 rounded-[1.35rem] bg-primary shadow-soft ring-1 ring-black/5 dark:ring-white/10",
           compact ? "h-11 w-11 p-3" : "h-14 w-14 p-3.5"
         )}
         aria-hidden="true"
       >
-        <span className="h-1.5 w-full rounded-full bg-white" />
-        <span className="h-1.5 w-4/5 rounded-full bg-cyan-300" />
-        <span className="h-1.5 w-3/5 rounded-full bg-amber-300" />
+        <span className="h-1.5 w-full rounded-full bg-white/95" />
+        <span className="h-1.5 w-4/5 rounded-full bg-white/80" />
+        <span className="h-1.5 w-3/5 rounded-full bg-white/65" />
       </div>
 
       <div className="space-y-1">
@@ -28,8 +28,8 @@ export function OrgisLogo({
             compact ? "text-3xl font-black" : "text-4xl font-black sm:text-5xl"
           )}
         >
-          <span className="text-slate-950 dark:text-white">Org</span>
-          <span className="inline-block pr-[0.12em] bg-gradient-to-r from-cyan-600 via-sky-600 to-amber-500 bg-clip-text text-transparent">
+          <span className="text-foreground">Org</span>
+          <span className="inline-block pr-[0.12em] bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-500 bg-clip-text text-transparent">
             is
           </span>
         </div>

@@ -1,5 +1,5 @@
-import { Dashboard } from "@/components/orgis/dashboard";
+import { LandingGate } from "@/components/orgis/landing-gate";
 
 export default function Page() {
-  return <Dashboard />;
+  return <LandingGate />;
 }

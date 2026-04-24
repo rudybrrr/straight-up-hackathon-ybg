@@ -7,13 +7,12 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  default: "bg-slate-900 text-white shadow-sm hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white",
-  secondary:
-    "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800",
+  default:
+    "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/95",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
   outline:
-    "border border-border/70 bg-white/80 text-slate-900 hover:bg-slate-50 dark:bg-slate-950/40 dark:text-slate-100 dark:hover:bg-slate-900/40",
-  ghost:
-    "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-slate-900/40 dark:hover:text-white",
+    "border border-border/70 bg-background text-foreground hover:bg-muted/40",
+  ghost: "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
   destructive:
     "bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-500"
 };

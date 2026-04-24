@@ -666,7 +666,7 @@ export function Dashboard() {
         <div className="orgis-grid absolute inset-0 opacity-35 dark:opacity-20" />
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background transition-colors">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-secondary transition-colors">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <OrgisLogo compact />
@@ -688,16 +688,6 @@ export function Dashboard() {
                   Updated {formatTimestamp(refreshedAt)}
                 </Badge>
               ) : null}
-              <Badge
-                className={cn(
-                  "border px-3 py-1",
-                  syncing
-                    ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-200"
-                )}
-              >
-                {syncing ? "Refreshing..." : "Live"}
-              </Badge>
               <Button
                 type="button"
                 variant="outline"
@@ -753,15 +743,16 @@ export function Dashboard() {
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex justify-center">
                     <div className="w-full max-w-4xl">
-                      <DonutChart
-                        title="Queue distribution"
-                        subtitle="Act now, review soon, and for later at a glance."
-                        align="center"
-                        slices={[
-                          {
-                            key: "act_now",
-                            label: "Act now",
-                            value: counts.act_now,
+                  <DonutChart
+                    title="Queue distribution"
+                    subtitle="Act now, review soon, and for later at a glance."
+                    align="center"
+                    showDetails={false}
+                    slices={[
+                      {
+                        key: "act_now",
+                        label: "Act now",
+                        value: counts.act_now,
                             className: "text-rose-600 stroke-rose-500"
                           },
                           {

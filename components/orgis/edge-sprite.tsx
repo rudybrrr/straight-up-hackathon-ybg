@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type Vec2 = { x: number; y: number };
 
@@ -17,12 +18,14 @@ function positionOnPerimeterBelowTop(
   width: number,
   height: number,
   inset: number,
-  topLimit: number
+  topLimit: number,
+  halfSize: number
 ) {
-  const left = inset;
-  const right = Math.max(inset, width - inset);
-  const top = Math.max(inset, topLimit);
-  const bottom = Math.max(top, height - inset);
+  // `width` should be `documentElement.clientWidth` so the right edge sits left of the scrollbar.
+  const left = inset + halfSize;
+  const right = Math.max(left, width - inset - halfSize);
+  const top = Math.max(inset + halfSize, topLimit + halfSize);
+  const bottom = Math.max(top, height - inset - halfSize);
 
   const w = Math.max(0, right - left);
   const h = Math.max(0, bottom - top);
@@ -42,6 +45,7 @@ function positionOnPerimeterBelowTop(
 }
 
 export function EdgeSprite() {
+  const [mounted, setMounted] = useState(false);
   const spriteRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const pointerRef = useRef<Vec2 | null>(null);
@@ -52,6 +56,14 @@ export function EdgeSprite() {
   const topLimitRef = useRef(0);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
     const node = spriteRef.current;
     if (!node) return;
 
@@ -98,19 +110,28 @@ export function EdgeSprite() {
       lastTsRef.current = ts;
       const dt = clamp((ts - lastTs) / 1000, 0, 0.05);
 
-      const width = window.innerWidth;
+      const width = document.documentElement.clientWidth;
       const height = window.innerHeight;
-      const inset = 18;
+      const inset = 20;
+      const spriteSize = 26;
+      const halfSize = spriteSize / 2;
 
       const topLimit = topLimitRef.current;
-      const w = Math.max(0, width - inset * 2);
-      const h = Math.max(0, height - inset * 2 - topLimit);
+      const w = Math.max(0, width - inset * 2 - spriteSize);
+      const h = Math.max(0, height - inset * 2 - topLimit - spriteSize);
       const perimeter = 2 * (w + h);
       if (perimeter > 0 && progressRef.current === 0) {
         progressRef.current = perimeter * 0.08;
       }
 
-      const pos = positionOnPerimeterBelowTop(progressRef.current, width, height, inset, topLimit);
+      const pos = positionOnPerimeterBelowTop(
+        progressRef.current,
+        width,
+        height,
+        inset,
+        topLimit,
+        halfSize
+      );
 
       const pointer = pointerRef.current;
       const dist = pointer ? distance(pointer, pos) : Infinity;
@@ -128,8 +149,11 @@ export function EdgeSprite() {
 
       const wobble = Math.sin(ts / 180) * (2 + proximity * 5);
       const pop = 1 + proximity * 0.16;
+      const facingAngle = (pos.angle + (dirRef.current === -1 ? 180 : 0)) % 360;
 
-      node.style.transform = `translate3d(${Math.round(pos.x)}px, ${Math.round(pos.y)}px, 0) rotate(${pos.angle}deg) scale(${pop})`;
+      node.style.transform = `translate3d(${Math.round(pos.x)}px, ${Math.round(
+        pos.y + wobble
+      )}px, 0) rotate(${facingAngle}deg) scale(${pop})`;
       node.style.setProperty("--orgis-sprite-wobble", wobble.toFixed(2));
       node.style.opacity = pointer ? String(0.92 + proximity * 0.08) : "0.78";
 
@@ -147,20 +171,24 @@ export function EdgeSprite() {
         window.cancelAnimationFrame(rafRef.current);
       }
     };
-  }, []);
+  }, [mounted]);
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <div
       ref={spriteRef}
       aria-hidden="true"
-      className="orgis-sprite pointer-events-none fixed left-0 top-0 z-20 -translate-x-1/2 -translate-y-1/2"
+      className="orgis-sprite pointer-events-none fixed left-0 top-0 z-30"
     >
       <svg width="26" height="26" viewBox="0 0 26 26" className="block" role="presentation">
         <defs>
           <linearGradient id="orgisSprite" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="rgb(34, 211, 238)" />
-            <stop offset="0.55" stopColor="rgb(56, 189, 248)" />
-            <stop offset="1" stopColor="rgb(251, 146, 60)" />
+            <stop offset="0" stopColor="rgb(37, 99, 235)" />
+            <stop offset="0.6" stopColor="rgb(14, 165, 233)" />
+            <stop offset="1" stopColor="rgb(99, 102, 241)" />
           </linearGradient>
         </defs>
         <circle cx="13" cy="13" r="10.5" fill="url(#orgisSprite)" opacity="0.95" />
@@ -179,5 +207,7 @@ export function EdgeSprite() {
         </g>
       </svg>
     </div>
+  ,
+    document.body
   );
 }

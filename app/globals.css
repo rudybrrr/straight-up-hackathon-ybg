@@ -4,47 +4,47 @@
 
 :root {
   --font-sans: "Aptos", "Segoe UI Variable", "Segoe UI", "SF Pro Display", "Helvetica Neue", sans-serif;
-  --background: 36 35% 96%;
+  --background: 34 36% 92%;
   --foreground: 212 41% 11%;
   --card: 0 0% 100%;
   --card-foreground: 212 41% 11%;
   --popover: 0 0% 100%;
   --popover-foreground: 212 41% 11%;
-  --primary: 199 75% 18%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 36 70% 92%;
+  --primary: 212 88% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 94%;
   --secondary-foreground: 212 41% 11%;
-  --muted: 36 28% 92%;
-  --muted-foreground: 215 16% 42%;
-  --accent: 188 45% 94%;
+  --muted: 210 24% 96%;
+  --muted-foreground: 215 16% 38%;
+  --accent: 212 55% 92%;
   --accent-foreground: 212 41% 11%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214 28% 86%;
-  --input: 214 28% 86%;
-  --ring: 199 75% 18%;
+  --border: 214 22% 84%;
+  --input: 214 22% 84%;
+  --ring: 212 88% 42%;
 }
 
 .dark {
-  --background: 222 47% 7%;
+  --background: 200 41% 7%;
   --foreground: 210 40% 98%;
-  --card: 222 44% 10%;
+  --card: 200 33% 10%;
   --card-foreground: 210 40% 98%;
-  --popover: 222 44% 10%;
+  --popover: 200 33% 10%;
   --popover-foreground: 210 40% 98%;
-  --primary: 190 85% 55%;
-  --primary-foreground: 222 47% 7%;
-  --secondary: 222 24% 14%;
+  --primary: 212 92% 62%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 200 22% 14%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 222 24% 14%;
-  --muted-foreground: 215 20% 72%;
-  --accent: 222 24% 14%;
+  --muted: 200 22% 14%;
+  --muted-foreground: 215 20% 74%;
+  --accent: 200 22% 14%;
   --accent-foreground: 210 40% 98%;
   --destructive: 0 72% 56%;
   --destructive-foreground: 210 40% 98%;
-  --border: 222 22% 18%;
-  --input: 222 22% 18%;
-  --ring: 190 85% 55%;
+  --border: 200 18% 20%;
+  --input: 200 18% 20%;
+  --ring: 212 92% 62%;
 }
 
 * {
@@ -64,15 +64,7 @@ body {
   margin: 0;
   min-height: 100vh;
   background-color: hsl(var(--background));
-  background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0) 42%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(15, 23, 42, 0.018) 0px,
-      rgba(15, 23, 42, 0.018) 1px,
-      transparent 1px,
-      transparent 6px
-    );
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0) 42%);
   color: hsl(var(--foreground));
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -82,15 +74,7 @@ body {
 
 html.dark body {
   background-color: hsl(var(--background));
-  background-image:
-    linear-gradient(180deg, rgba(148, 163, 184, 0.06), rgba(2, 6, 23, 0) 48%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(226, 232, 240, 0.02) 0px,
-      rgba(226, 232, 240, 0.02) 1px,
-      transparent 1px,
-      transparent 6px
-    );
+  background-image: linear-gradient(180deg, rgba(148, 163, 184, 0.06), rgba(2, 6, 23, 0) 48%);
 }
 
 ::selection {
@@ -106,12 +90,17 @@ html.dark .orgis-sprite {
 }
 
 .orgis-grid {
-  background-image: linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image:
+    radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px, 48px 48px;
+  background-position: 0 0, 12px 12px;
 }
 
 html.dark .orgis-grid {
-  background-image: linear-gradient(rgba(226, 232, 240, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(226, 232, 240, 0.06) 1px, transparent 1px);
+  background-image:
+    radial-gradient(rgba(226, 232, 240, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(226, 232, 240, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px, 48px 48px;
+  background-position: 0 0, 12px 12px;
 }
