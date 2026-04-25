@@ -315,4 +315,4 @@ If Beeper sync is used in production or a long-running demo, keep `npm run beepe
 
 Orgis is not trying to be another chat app. It is the decision layer above the chat apps users already have.
 
-It has a clear target user, a painful daily workflow, a real integration path, a structured AI system, a usable inbox UI, and an original framing: **AI should not just answer messages; it should protect attention.**
+It has a clear target user, a painful daily workflow, a real integration path, a structured AI system, a usable inbox UI, and an original framing: **AI should not just answer messages; it should protect attention!**
