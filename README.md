@@ -302,7 +302,7 @@ npm run beeper:listen
 
 ## Production
 
-Build and start:
+Build & start:
 
 ```bash
 npm run build
